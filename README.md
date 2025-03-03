@@ -106,7 +106,7 @@ uv run voice_assistant_demo.py
 uv run voice_assistant_demo.py --wake-word "hey assistant"
 
 # With specific engines
-uv run voice_assistant_demo.py --stt-engine vosk --tts-engine pyttsx3
+uv run voice_assistant_demo.py --stt-engine vosk --tts-engine gtts
 
 # With verbose logging
 uv run voice_assistant_demo.py --verbose
@@ -140,9 +140,10 @@ uv run voice_assistant_demo.py --voice-profile british
 
 You can create custom voice profiles by adding JSON files to the `voices` directory. See [VOICES.md](voices/VOICES.md) for details.
 
-Example voice profile:
+Example voice profiles:
 
 ```json
+# pyttsx3 voice profile example
 {
   "name": "My Custom Voice",
   "description": "Custom voice with specific settings",
@@ -152,7 +153,19 @@ Example voice profile:
   "volume": 0.9,
   "language": "en-US"
 }
+
+# gTTS voice profile example (default engine)
+{
+  "name": "My gTTS Voice",
+  "description": "Google Text-to-Speech voice profile",
+  "engine": "gtts",
+  "language": "en-us",
+  "tld": "com",
+  "slow": false
+}
 ```
+
+Note: gTTS is now the default TTS engine due to better reliability and to avoid the "run loop not started" error that can occur with pyttsx3.
 
 ## Logging System
 
@@ -197,7 +210,7 @@ The assistant supports two speech recognition engines:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ASSISTANT_PROMPT_TEMPLATE` | Template for LLM prompts | Basic helpful assistant template |
-| `TTS_ENGINE` | Text-to-speech engine | `pyttsx3` |
+| `TTS_ENGINE` | Text-to-speech engine | `gtts` |
 | `TTS_VOICE_ID` | Voice ID for TTS | System default |
 | `TTS_RATE` | Speech rate (words per minute) | `150` |
 | `TTS_VOLUME` | Speech volume (0.0 to 1.0) | `1.0` |

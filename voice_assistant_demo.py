@@ -243,8 +243,8 @@ def parse_arguments():
     tts_group.add_argument(
         "--tts-engine",
         choices=["pyttsx3", "gtts"],
-        default="pyttsx3" if PYTTSX3_AVAILABLE else "gtts",
-        help="The TTS engine to use (default: pyttsx3 if available, otherwise gtts)"
+        default="gtts",
+        help="The TTS engine to use (default: gtts for better reliability)"
     )
     tts_group.add_argument(
         "--tts-voice",
