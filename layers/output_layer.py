@@ -11,6 +11,7 @@ Classes:
     OutputLayer: Abstract base class for all output layers.
     TextOutputLayer: Implementation that prints text to the console.
     ColoredTextOutputLayer: Implementation that prints colored text to the console.
+    TextToSpeechOutputLayer: Implementation that converts text to speech.
 
 Functions:
     create_output_layer: Factory function to create the appropriate output layer.
@@ -21,8 +22,26 @@ Typical usage example:
     output_layer.output("Hello, world!")
 """
 
+import os
+import sys
+import platform
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Union
+
+# Import text-to-speech libraries conditionally to handle missing dependencies gracefully
+try:
+    import pyttsx3
+    PYTTSX3_AVAILABLE = True
+except ImportError:
+    PYTTSX3_AVAILABLE = False
+
+try:
+    from gtts import gTTS
+    import tempfile
+    import pygame
+    GTTS_AVAILABLE = True
+except ImportError:
+    GTTS_AVAILABLE = False
 
 
 class OutputLayer(ABC):
@@ -153,9 +172,150 @@ class ColoredTextOutputLayer(OutputLayer):
         print(f"{color_code}{self.prefix}{text}{reset_code}")
 
 
-# TODO: Implement TextToSpeechOutputLayer for voice output using a library like pyttsx3 or gTTS
-# TODO: Implement FileOutputLayer for logging responses to a file
-# TODO: Implement MultiOutputLayer to support multiple output methods simultaneously
+class TextToSpeechOutputLayer(OutputLayer):
+    """
+    Output layer that converts text to speech.
+
+    This implementation uses text-to-speech libraries to convert the assistant's
+    response to speech. It supports multiple TTS engines:
+    - pyttsx3: Offline TTS engine that works across platforms
+    - gTTS: Google Text-to-Speech (requires internet connection)
+
+    Attributes:
+        engine (str): The TTS engine to use ('pyttsx3' or 'gtts').
+        voice_id (Optional[str]): The voice ID to use (engine-specific).
+        rate (int): The speech rate (words per minute, for pyttsx3).
+        volume (float): The speech volume (0.0 to 1.0, for pyttsx3).
+        language (str): The language code (for gTTS).
+        print_text (bool): Whether to also print the text to the console.
+        prefix (str): The prefix to prepend to the output text if printed.
+    """
+
+    def __init__(self,
+                 engine: str = "pyttsx3",
+                 voice_id: Optional[str] = None,
+                 rate: int = 150,
+                 volume: float = 1.0,
+                 language: str = "en",
+                 print_text: bool = True,
+                 prefix: str = "Assistant: "):
+        """
+        Initialize the text-to-speech output layer.
+
+        Args:
+            engine (str, optional): The TTS engine to use ('pyttsx3' or 'gtts').
+                Defaults to "pyttsx3".
+            voice_id (Optional[str], optional): The voice ID to use (engine-specific).
+                For pyttsx3, this is the ID of the voice to use.
+                For gTTS, this is not used.
+                Defaults to None, which uses the default voice.
+            rate (int, optional): The speech rate (words per minute, for pyttsx3).
+                Defaults to 150.
+            volume (float, optional): The speech volume (0.0 to 1.0, for pyttsx3).
+                Defaults to 1.0.
+            language (str, optional): The language code (for gTTS).
+                Defaults to "en".
+            print_text (bool, optional): Whether to also print the text to the console.
+                Defaults to True.
+            prefix (str, optional): The prefix to prepend to the output text if printed.
+                Defaults to "Assistant: ".
+
+        Raises:
+            ImportError: If the required TTS library is not available.
+        """
+        self.engine = engine
+        self.voice_id = voice_id
+        self.rate = rate
+        self.volume = volume
+        self.language = language
+        self.print_text = print_text
+        self.prefix = prefix
+
+        # Initialize the TTS engine
+        if engine == "pyttsx3":
+            if not PYTTSX3_AVAILABLE:
+                raise ImportError(
+                    "pyttsx3 is not installed. Install it with 'pip install pyttsx3'."
+                )
+            self.tts_engine = pyttsx3.init()
+
+            # Configure the engine
+            if voice_id is not None:
+                self.tts_engine.setProperty('voice', voice_id)
+            self.tts_engine.setProperty('rate', rate)
+            self.tts_engine.setProperty('volume', volume)
+
+            # List available voices (for debugging)
+            voices = self.tts_engine.getProperty('voices')
+            print(f"Available voices ({len(voices)}):")
+            for i, voice in enumerate(voices):
+                print(f"  {i}: {voice.id} - {voice.name} ({voice.languages})")
+
+        elif engine == "gtts":
+            if not GTTS_AVAILABLE:
+                raise ImportError(
+                    "gTTS and pygame are not installed. Install them with 'pip install gtts pygame'."
+                )
+            # Initialize pygame mixer for audio playback
+            pygame.mixer.init()
+
+        else:
+            raise ValueError(f"Unsupported TTS engine: {engine}")
+
+    def output(self, text: str) -> None:
+        """
+        Convert text to speech and optionally print it to the console.
+
+        This method converts the text to speech using the configured TTS engine
+        and plays it through the system's audio output.
+
+        Args:
+            text (str): The text to output.
+
+        Raises:
+            RuntimeError: If there is an error generating or playing the speech.
+
+        Example:
+            >>> layer = TextToSpeechOutputLayer()
+            >>> layer.output("Hello, world!")
+            # Speaks "Hello, world!" and prints "Assistant: Hello, world!"
+        """
+        # Print the text if configured to do so
+        if self.print_text:
+            print(f"{self.prefix}{text}")
+
+        try:
+            # Generate and play speech using the configured engine
+            if self.engine == "pyttsx3":
+                self.tts_engine.say(text)
+                self.tts_engine.runAndWait()
+
+            elif self.engine == "gtts":
+                # Create a temporary file for the audio
+                with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_file:
+                    temp_path = temp_file.name
+
+                try:
+                    # Generate the speech
+                    tts = gTTS(text=text, lang=self.language, slow=False)
+                    tts.save(temp_path)
+
+                    # Play the speech
+                    pygame.mixer.music.load(temp_path)
+                    pygame.mixer.music.play()
+
+                    # Wait for the speech to finish
+                    while pygame.mixer.music.get_busy():
+                        pygame.time.Clock().tick(10)
+
+                finally:
+                    # Clean up the temporary file
+                    if os.path.exists(temp_path):
+                        os.unlink(temp_path)
+
+        except Exception as e:
+            print(f"Error generating or playing speech: {e}")
+            # TODO: Implement proper error handling and logging
 
 
 def create_output_layer(config: Dict[str, Any]) -> OutputLayer:
@@ -187,9 +347,34 @@ def create_output_layer(config: Dict[str, Any]) -> OutputLayer:
     if output_layer_type == "local_text":
         prefix = config.get("OUTPUT_PREFIX", "Assistant: ")
         return TextOutputLayer(prefix=prefix)
+
     elif output_layer_type == "colored_text":
         color = config.get("OUTPUT_COLOR", "blue")
         prefix = config.get("OUTPUT_PREFIX", "Assistant: ")
         return ColoredTextOutputLayer(color=color, prefix=prefix)
+
+    elif output_layer_type == "text_to_speech":
+        engine = config.get("TTS_ENGINE", "pyttsx3")
+        voice_id = config.get("TTS_VOICE_ID")
+        rate = int(config.get("TTS_RATE", "150"))
+        volume = float(config.get("TTS_VOLUME", "1.0"))
+        language = config.get("TTS_LANGUAGE", "en")
+        print_text = config.get("TTS_PRINT_TEXT", "true").lower() == "true"
+        prefix = config.get("OUTPUT_PREFIX", "Assistant: ")
+
+        try:
+            return TextToSpeechOutputLayer(
+                engine=engine,
+                voice_id=voice_id,
+                rate=rate,
+                volume=volume,
+                language=language,
+                print_text=print_text,
+                prefix=prefix
+            )
+        except ImportError as e:
+            print(f"Warning: {e} Falling back to text output.")
+            return TextOutputLayer(prefix=prefix)
+
     else:
         raise ValueError(f"Unsupported output layer type: {output_layer_type}")

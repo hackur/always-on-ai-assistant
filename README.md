@@ -1,173 +1,142 @@
 # Always-On AI Assistant
 
-This project aims to create a flexible and configurable AI assistant that can be adapted to various use cases and environments. It leverages a modular architecture and supports different LLM workflow patterns.
+A versatile, modular AI assistant framework that provides continuous assistance through voice interaction and natural language processing.
 
-## Architecture
+## Features
 
-The assistant is designed with a layered architecture:
-
-1. **Input Layer:** Handles user input (e.g., speech-to-text).
-2. **Processing Layer:** Core agent logic, utilizing LLMs and workflow patterns.
-3. **Memory Layer:** Manages conversation history and state.
-4. **Output Layer:** Presents the assistant's responses (e.g., text-to-speech).
-5. **Tool Layer:** External services the agent can use.
-
-## Current Implementation
-
-We have implemented a modular, layered architecture with the following components:
-
-- **Input Layer:** Currently supports text input from the command line.
-- **Processing Layer:** Implements a basic prompt chaining workflow using Ollama for local LLM serving.
-- **Memory Layer:** Supports in-memory storage and JSON file storage for conversation history.
-- **Output Layer:** Supports plain text and colored text output to the console.
-
-The implementation follows a clean, modular design with well-defined interfaces for each layer, making it easy to extend with new capabilities.
-
-## Next Steps: Voice Integration Plan
-
-### Phase 1: Text-to-Speech Integration (Current Priority)
-
-1. **Research and Select TTS Library:**
-   - **Option 1:** pyttsx3 (offline, cross-platform)
-   - **Option 2:** gTTS (Google Text-to-Speech, requires internet)
-   - **Option 3:** Edge-TTS (Microsoft Edge TTS, good quality)
-
-2. **Implementation Steps:**
-   - Create a `TextToSpeechOutputLayer` class in `layers/output_layer.py`
-   - Implement the `output` method to convert text to speech
-   - Update the `create_output_layer` function to handle the new layer type
-   - Add configuration options in `.env.local`
-   - Update requirements.txt with the selected TTS library
-
-3. **Testing and Refinement:**
-   - Test with different voices and speech rates
-   - Add configuration options for voice selection, rate, and volume
-   - Implement error handling for TTS failures
-
-### Phase 2: Speech-to-Text Integration (Future)
-
-1. **Research and Select STT Library:**
-   - **Option 1:** Vosk (offline, lightweight)
-   - **Option 2:** Whisper.cpp (offline, high accuracy)
-   - **Option 3:** SpeechRecognition with Google (requires internet)
-
-2. **Implementation Steps:**
-   - Create a `SpeechToTextInputLayer` class in `layers/input_layer.py`
-   - Implement the `get_input` method to convert speech to text
-   - Update the `create_input_layer` function to handle the new layer type
-   - Add configuration options in `.env.local`
-
-3. **Testing and Refinement:**
-   - Test with different microphones and environments
-   - Add wake word detection
-   - Implement noise filtering and silence detection
-
-### Phase 3: Full Voice Assistant Integration
-
-1. **Continuous Listening Mode:**
-   - Implement a continuous listening loop
-   - Add wake word detection
-   - Implement conversation state management
-
-2. **Multi-modal Integration:**
-   - Support both voice and text input/output simultaneously
-   - Add visual indicators for listening/speaking states
-
-3. **Performance Optimization:**
-   - Optimize for low latency
-   - Implement caching for frequently used phrases
-   - Add streaming TTS for faster response times
-
-## Configuration
-
-The assistant is configured via `.env` files. Different configurations can be used to switch between:
-
-* Local and remote LLM servers (e.g., LM Studio, OpenRouter, Anthropic).
-* Different input and output methods.
-* Different memory implementations.
-* Different agent configurations (including workflow patterns).
-
-Example `.env` structure:
-
-```
-INPUT_LAYER=...
-PROCESSING_LAYER=...
-AGENT_1_TYPE=...
-AGENT_1_MODEL=...
-AGENT_1_API_KEY=...
-# ... (additional agent configurations)
-MEMORY_LAYER=...
-OUTPUT_LAYER=...
-```
-
-## Free and Open Source Implementation
-
-This project is designed to be implemented entirely with free and open-source resources:
-
-* **Local LLM Serving:** Ollama, LM Studio, or LocalAI for running models locally
-* **Models:** Open-source models like Mistral, Llama 3, Phi-3, etc.
-* **Speech Processing:** Local STT/TTS solutions like Vosk, Whisper.cpp, pyttsx3
-* **Storage:** SQLite, JSON files, or Redis for conversation history
-* **Tools:** Self-hosted or free API services for search, weather, etc.
-
-See [FREE_RESOURCES.md](FREE_RESOURCES.md) for a comprehensive list of free resources and implementation examples.
-
-## Workflow Patterns
-
-The processing layer can leverage various workflow patterns from the `workflows` directory, including:
-
-* Basic Prompt Chaining
-* Parallelization
-* Routing
-* Orchestrator-Worker
-* Evaluator-Optimizer
+- **Voice Interaction**: Text-to-Speech (TTS) and Speech-to-Text (STT) capabilities for natural interaction
+- **Modular Architecture**: Easily extensible with new capabilities and integrations
+- **Multiple LLM Support**: Compatible with various Large Language Models (Ollama, OpenAI, Anthropic, etc.)
+- **Customizable Prompts**: Configure how the assistant responds with template-based prompting
+- **Environment Configuration**: Simple setup through environment variables and configuration files
+- **Cross-Platform**: Works on macOS, Linux, and Windows
 
 ## Getting Started
 
-1. Set up your desired `.env` configuration in the `layers` directory.
-2. Install dependencies: `pip install -r requirements.txt`
-3. Run the assistant: `python main_layered.py`
+### Prerequisites
 
-## Usage
+- Python 3.10+
+- [uv](https://github.com/astral-sh/uv) for dependency management (recommended)
+- For TTS: speakers or headphones
+- For STT: microphone
 
-Once the assistant is running, you can interact with it via the command line. Type your message and press Enter to send it. The assistant will respond with its generated reply.
+### Installation
 
-Type `exit` or `quit` to end the conversation.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/always-on-ai-assistant.git
+   cd always-on-ai-assistant
+   ```
 
-## Prompt Templates
+2. Install dependencies:
+   ```bash
+   uv pip install -r requirements.txt
+   ```
 
-The assistant uses prompt templates defined in `layers/prompt_templates.json`. You can modify these templates or add new ones to change how the assistant formats prompts for the LLM.
+3. Create a `.env` file based on the sample:
+   ```bash
+   cp .env.sample .env
+   ```
 
-Available templates:
-- `basic_chaining`: A simple template for general conversation
-- `detailed_response`: A template for generating detailed, comprehensive answers
-- `concise_response`: A template for generating brief, to-the-point answers
-- `coding_assistant`: A template for programming-related questions
+4. Edit the `.env` file to configure your assistant
 
-## Testing
+### Running the Assistant
 
-Run the tests with:
+#### Basic Usage
 
 ```bash
-python -m unittest discover -s tests
+uv run main.py
+```
+
+#### Text-to-Speech Demo
+
+```bash
+uv run live_tts_demo.py
+```
+
+#### With Custom Configuration
+
+```bash
+uv run live_tts_demo.py --engine gtts --voice "en-US" --rate 150
+```
+
+## Configuration Options
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ASSISTANT_PROMPT_TEMPLATE` | Template for LLM prompts | Basic helpful assistant template |
+| `TTS_ENGINE` | Text-to-speech engine | `pyttsx3` |
+| `TTS_VOICE_ID` | Voice ID for TTS | System default |
+| `TTS_RATE` | Speech rate (words per minute) | `150` |
+| `TTS_VOLUME` | Speech volume (0.0 to 1.0) | `1.0` |
+| `TTS_LANGUAGE` | Language code for gTTS | `en` |
+| `LLM_MODEL_TYPE` | Type of LLM to use | `ollama` |
+| `LLM_MODEL_NAME` | Name of the LLM model | `mistralai/Mistral-7B-Instruct-v0.1` |
+| `LLM_BASE_URL` | Base URL for the LLM API | `http://localhost:11434` |
+
+### Command Line Arguments
+
+The `live_tts_demo.py` script supports the following arguments:
+
+- `--engine`: TTS engine to use (`pyttsx3` or `gtts`)
+- `--voice`: Voice ID for pyttsx3
+- `--rate`: Speech rate in words per minute
+- `--volume`: Speech volume (0.0 to 1.0)
+- `--language`: Language code for gTTS
+- `--model`: LLM model to use
+- `--model-type`: Type of LLM to use
+- `--base-url`: Base URL for the LLM API
+- `--verbose`: Enable verbose output
+
+## Project Structure
+
+```
+always-on-ai-assistant/
+├── .env.sample                # Sample environment variables
+├── README.md                  # This file
+├── main.py                    # Main entry point
+├── live_tts_demo.py           # Text-to-speech demo
+├── requirements.txt           # Project dependencies
+├── ai_docs/                   # AI documentation
+├── commands/                  # Command implementations
+├── images/                    # Project images
+├── layers/                    # Architectural layers
+├── modules/                   # Core modules
+│   ├── __init__.py
+│   ├── assistant_config.py    # Configuration handling
+│   ├── base_assistant.py      # Base assistant implementation
+│   ├── data_types.py          # Data type definitions
+│   ├── execute_python.py      # Python execution utilities
+│   ├── ollama.py              # Ollama integration
+│   ├── typer_agent.py         # Typer CLI agent
+│   └── utils.py               # Utility functions
+├── prompts/                   # Prompt templates
+└── tests/                     # Test suite
+    ├── __init__.py
+    ├── .env.test              # Test environment variables
+    ├── test_helper.py         # Test utilities
+    └── ...                    # Various test modules
 ```
 
 ## Extending the Assistant
 
-### Adding a New Input Layer
+### Adding New Voice Capabilities
 
-1. Create a new class that inherits from `InputLayer` in `layers/input_layer.py`
-2. Implement the `get_input` method
-3. Update the `create_input_layer` function to handle the new layer type
+The assistant uses a modular architecture that makes it easy to add new voice capabilities:
 
-### Adding a New Output Layer
+1. For new TTS engines, extend the `TextToSpeechOutputLayer` class
+2. For new STT engines, implement a new input layer based on the existing patterns
 
-1. Create a new class that inherits from `OutputLayer` in `layers/output_layer.py`
-2. Implement the `output` method
-3. Update the `create_output_layer` function to handle the new layer type
+### Custom Commands
 
-## Detailed Plans
+Create new command modules in the `commands/` directory following the template pattern.
 
-* [PLAN.md](PLAN.md) - Detailed implementation plan for the modular architecture
-* [FREE_RESOURCES.md](FREE_RESOURCES.md) - Comprehensive list of free resources and code examples
-* [LAYERED_README.md](LAYERED_README.md) - Detailed documentation for the layered implementation
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
