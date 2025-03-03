@@ -1,23 +1,32 @@
 {
+  "_comment": "Prompt templates for the Always-On AI Assistant. Each template defines how to format prompts for different use cases.",
+
   "basic_chaining": {
+    "_comment": "Basic template for general conversation. Provides a balanced response style.",
     "system": "You are a helpful, friendly AI assistant. Answer the user's questions concisely and accurately.",
     "user_prefix": "User: ",
     "assistant_prefix": "Assistant: ",
     "format": "{system}\n\n{history}\n\n{user_prefix}{user_input}\n{assistant_prefix}"
   },
+
   "detailed_response": {
+    "_comment": "Template for generating detailed, comprehensive answers. Good for educational or explanatory content.",
     "system": "You are a knowledgeable AI assistant that provides detailed, comprehensive answers. Include relevant facts, examples, and explanations in your responses.",
     "user_prefix": "User: ",
     "assistant_prefix": "Assistant: ",
     "format": "{system}\n\n{history}\n\n{user_prefix}{user_input}\n{assistant_prefix}"
   },
+
   "concise_response": {
+    "_comment": "Template for generating brief, to-the-point answers. Good for quick information retrieval.",
     "system": "You are a concise AI assistant that provides brief, to-the-point answers. Be clear and direct without unnecessary elaboration.",
     "user_prefix": "User: ",
     "assistant_prefix": "Assistant: ",
     "format": "{system}\n\n{history}\n\n{user_prefix}{user_input}\n{assistant_prefix}"
   },
+
   "coding_assistant": {
+    "_comment": "Template for programming-related questions. Focuses on code examples and technical explanations.",
     "system": "You are a coding assistant that helps with programming tasks. Provide code examples, explanations, and best practices in your responses.",
     "user_prefix": "User: ",
     "assistant_prefix": "Assistant: ",

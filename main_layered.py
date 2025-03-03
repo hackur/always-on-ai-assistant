@@ -1,7 +1,24 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Main application for the Always-On AI Assistant.
-This module connects all the layers and runs the assistant.
+
+This module connects all the layers and runs the assistant. It handles command-line
+arguments, initializes the layers, and implements the main interaction loop.
+
+The assistant uses a modular architecture with the following layers:
+- Input Layer: Handles user input from various sources.
+- Memory Layer: Manages conversation history and state.
+- Processing Layer: Implements the core agent logic and workflow management.
+- Output Layer: Presents the assistant's responses to the user.
+
+Functions:
+    parse_arguments: Parse command-line arguments.
+    main: Main function to run the assistant.
+
+Typical usage:
+    $ python main_layered.py
+    $ python main_layered.py --env-file custom.env
 """
 
 import sys
@@ -27,7 +44,20 @@ except ImportError as e:
 
 
 def parse_arguments():
-    """Parse command line arguments."""
+    """
+    Parse command-line arguments.
+
+    This function sets up the argument parser and parses the command-line arguments.
+
+    Returns:
+        argparse.Namespace: The parsed command-line arguments.
+
+    Command-line arguments:
+        --env-file: Path to the environment file (default: .env.local)
+
+    Example:
+        $ python main_layered.py --env-file custom.env
+    """
     parser = argparse.ArgumentParser(description="Always-On AI Assistant")
     parser.add_argument(
         "--env-file",
@@ -38,8 +68,25 @@ def parse_arguments():
 
 
 def main():
-    """Main function to run the assistant."""
-    # Parse command line arguments
+    """
+    Main function to run the assistant.
+
+    This function initializes the layers, runs the main interaction loop,
+    and handles errors and exceptions.
+
+    The main interaction loop:
+    1. Get input from the user.
+    2. Process the input to generate a response.
+    3. Store the interaction in memory.
+    4. Output the response to the user.
+    5. Repeat until the user exits.
+
+    The user can exit by typing 'exit' or 'quit', or by pressing Ctrl+C.
+
+    Raises:
+        SystemExit: If there is an error initializing the layers.
+    """
+    # Parse command-line arguments
     args = parse_arguments()
 
     # Load configuration
@@ -59,6 +106,7 @@ def main():
         print(f"Error creating layers: {e}")
         sys.exit(1)
 
+    # Print initialization message
     print("Always-On AI Assistant initialized.")
     print(f"Using {config['AGENT_1_TYPE']} model: {config['AGENT_1_MODEL']}")
     print("Type 'exit' to quit.")
@@ -85,10 +133,13 @@ def main():
             output_layer.output(response)
 
         except KeyboardInterrupt:
+            # Handle Ctrl+C gracefully
             print("\nGoodbye!")
             break
         except Exception as e:
+            # Handle other exceptions
             print(f"Error: {e}")
+            # TODO: Implement proper error handling and logging
             continue
 
 
