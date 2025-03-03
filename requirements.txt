@@ -1,0 +1,19 @@
+# Core dependencies
+python-dotenv>=0.19.0  # For loading environment variables
+requests>=2.28.0       # For making HTTP requests
+
+# Optional dependencies for different layers
+# Speech-to-text (uncomment if needed)
+# vosk>=0.3.32         # For offline speech recognition
+# pyaudio>=0.2.11      # For audio input
+
+# Text-to-speech (uncomment if needed)
+# pyttsx3>=2.90        # For offline text-to-speech
+# gtts>=2.2.3          # For Google Text-to-Speech
+
+# Memory storage (uncomment if needed)
+# redis>=4.3.4         # For Redis-based memory
+
+# Development dependencies
+pytest>=7.0.0          # For running tests
+black>=22.3.0          # For code formatting

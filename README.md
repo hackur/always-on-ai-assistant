@@ -1,69 +1,68 @@
-# "Always-On" Deepseek AI Assistant
-> A pattern for an always on AI Assistant powered by Deepseek-V3, RealtimeSTT, and Typer for engineering
->
-> Checkout [the demo](https://youtu.be/zoBwIi4ZiTA) where we walk through using this always-on-ai-assistant.
+# Always-On AI Assistant
 
-![ada-deepseek-v3.png](./images/ada-deepseek-v3.png)
+This project aims to create a flexible and configurable AI assistant that can be adapted to various use cases and environments. It leverages a modular architecture and supports different LLM workflow patterns.
 
-## Setup
-- `cp .env.sample .env`
-  - Update with your keys `DEEPSEEK_API_KEY` and `ELEVEN_API_KEY`
-- `uv sync`
-- (optional) install python 3.11 (`uv python install 3.11`)
+## Architecture
 
+The assistant is designed with a layered architecture:
 
-## Commands
+1.  **Input Layer:** Handles user input (e.g., speech-to-text).
+2.  **Processing Layer:** Core agent logic, utilizing LangGraph and workflow patterns.
+3.  **Memory Layer:** Manages conversation history and state.
+4.  **Output Layer:** Presents the assistant's responses (e.g., text-to-speech).
+5. **Tool Layer:** External services the agent can use.
 
-### Base Assistant Chat Interface
-> See `main_base_assistant.py` for more details.
-Start a conversational chat session with the base assistant:
+## Configuration
 
-```bash
-uv run python main_base_assistant.py chat
+The assistant is configured via `.env` files. Different configurations can be used to switch between:
+
+*   Local and remote LLM servers (e.g., LM Studio, OpenRouter, Anthropic).
+*   Different input and output methods.
+*   Different memory implementations.
+*   Different agent configurations (including workflow patterns).
+
+Example `.env` structure:
+
+```
+INPUT_LAYER=...
+PROCESSING_LAYER=...
+AGENT_1_TYPE=...
+AGENT_1_MODEL=...
+AGENT_1_API_KEY=...
+# ... (additional agent configurations)
+MEMORY_LAYER=...
+OUTPUT_LAYER=...
 ```
 
-### Typer Assistant Conversational Commands
-> See `main_typer_assistant.py`, `modules/typer_agent.py`, and `commands/template.py` for more details.
+## Free and Open Source Implementation
 
-- `--typer-file`: file containing typer commands
-- `--scratchpad`: active memory for you and your assistant
-- `--mode`: determines what the assistant does with the command: ('default', 'execute', 'execute-no-scratch').
+This project is designed to be implemented entirely with free and open-source resources:
 
-1. Awaken the assistant
-```bash
-uv run python main_typer_assistant.py awaken --typer-file commands/template.py --scratchpad scratchpad.md --mode execute
-```
+* **Local LLM Serving:** Ollama, LM Studio, or LocalAI for running models locally
+* **Models:** Open-source models like Mistral, Llama 3, Phi-3, etc.
+* **Speech Processing:** Local STT/TTS solutions like Vosk, Whisper.cpp, pyttsx3
+* **Storage:** SQLite, JSON files, or Redis for conversation history
+* **Tools:** Self-hosted or free API services for search, weather, etc.
 
-2. Speak to the assistant
-Try this:
-"Hello! Ada, ping the server wait for a response" (be sure to pronounce 'ada' clearly)
+See [FREE_RESOURCES.md](FREE_RESOURCES.md) for a comprehensive list of free resources and implementation examples.
 
-3. See the command in the scratchpad
-Open `scratchpad.md` to see the command that was generated.
+## Workflow Patterns
 
-## Assistant Architecture
-> See `assistant_config.yml` for more details.
+The processing layer can leverage various workflow patterns from the `workflows` directory, including:
 
-### Typer Assistant
-> See `assistant_config.yml` for more details.
-- 🧠 Brain: `Deepseek V3`
-- 📝 Job (Prompt(s)): `prompts/typer-commands.xml`
-- 💻 Active Memory (Dynamic Variables): `scratchpad.txt`
-- 👂 Ears (STT): `RealtimeSTT`
-- 🎤 Mouth (TTS): `ElevenLabs`
+*   Basic Prompt Chaining
+*   Parallelization
+*   Routing
+*   Orchestrator-Worker
+*   Evaluator-Optimizer
 
-### Base Assistant
-> See `assistant_config.yml` for more details.
-- 🧠 Brain: `ollama:phi4`
-- 📝 Job (Prompt(s)): `None`
-- 💻 Active Memory (Dynamic Variables): `none`
-- 👂 Ears (STT): `RealtimeSTT`
-- 🎤 Mouth (TTS): `local`
+## Getting Started
 
+1.  Set up your desired `.env` configuration.
+2.  Install dependencies: `uv pip install -r requirements.txt`
+3.  Run the assistant.
 
-## Resources
-- LOCAL SPEECH TO TEXT: https://github.com/KoljaB/RealtimeSTT
-- faster whisper (support for RealtimeSTT) https://github.com/SYSTRAN/faster-whisper
-- whisper https://github.com/openai/whisper
-- examples https://github.com/KoljaB/RealtimeSTT/blob/master/tests/realtimestt_speechendpoint_binary_classified.py
-- elevenlabs voice models: https://elevenlabs.io/docs/developer-guides/models#older-models
+## Detailed Plans
+
+* [PLAN.md](PLAN.md) - Detailed implementation plan for the modular architecture
+* [FREE_RESOURCES.md](FREE_RESOURCES.md) - Comprehensive list of free resources and code examples
