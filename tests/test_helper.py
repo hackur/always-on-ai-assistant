@@ -197,10 +197,10 @@ def create_tts_layer(args: Any) -> Any:
 
     # Check if the selected engine is available
     if engine == "pyttsx3" and not PYTTSX3_AVAILABLE:
-        print("Error: pyttsx3 is not installed. Install it with 'pip install pyttsx3'.")
+        print("Error: pyttsx3 is not installed. Install it with 'pip install pyttsx3'. To use gTTS instead, run with '--tts-engine gtts'")
         sys.exit(1)
     elif engine == "gtts" and not GTTS_AVAILABLE:
-        print("Error: gTTS and pygame are not installed. Install them with 'pip install gtts pygame'.")
+        print("Error: gTTS and pygame are not installed. Install them with 'pip install gtts pygame'. To use pyttsx3 instead, run with '--tts-engine pyttsx3'")
         sys.exit(1)
 
     # Create a TextToSpeechOutputLayer instance

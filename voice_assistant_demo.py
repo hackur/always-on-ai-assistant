@@ -213,12 +213,15 @@ def parse_arguments():
     )
 
     # Text-to-Speech options
+    # Import PYTTSX3_AVAILABLE for default TTS engine selection
+    from layers.output_layer import PYTTSX3_AVAILABLE
+
     tts_group = parser.add_argument_group("Text-to-Speech Options")
     tts_group.add_argument(
         "--tts-engine",
         choices=["pyttsx3", "gtts"],
-        default=defaults["tts_engine"],
-        help=f"The TTS engine to use (default: {defaults['tts_engine']})"
+        default="pyttsx3" if PYTTSX3_AVAILABLE else "gtts",
+        help="The TTS engine to use (default: pyttsx3 if available, otherwise gtts)"
     )
     tts_group.add_argument(
         "--tts-voice",

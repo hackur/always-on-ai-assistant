@@ -287,8 +287,11 @@ class TextToSpeechOutputLayer(OutputLayer):
         try:
             # Generate and play speech using the configured engine
             if self.engine == "pyttsx3":
-                self.tts_engine.say(text)
-                self.tts_engine.runAndWait()
+                try:
+                    self.tts_engine.say(text)
+                    self.tts_engine.runAndWait()
+                finally:
+                    self.tts_engine.endLoop()
 
             elif self.engine == "gtts":
                 # Create a temporary file for the audio
