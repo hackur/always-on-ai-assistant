@@ -80,6 +80,12 @@ class SpeechInputLayer:
             callback: Function to call with recognized text
             print_text: Whether to print recognized text to the console
         """
+        if engine is None:
+            raise ImportError("No speech recognition engine available. Please install either 'speechrecognition' or 'vosk'.")
+
+        if engine is None:
+            raise ValueError("No speech recognition engine available. At least one of 'speechrecognition' or 'vosk' is required.")
+
         self.engine = engine.lower()
         self.language = language
         self.vosk_model_path = vosk_model_path
@@ -99,12 +105,12 @@ class SpeechInputLayer:
 
         # Check if the required dependencies are available
         if self.engine == "speechrecognition" and not SPEECHRECOGNITION_AVAILABLE:
-            raise ImportError("SpeechRecognition is not installed. Install it with 'pip install speechrecognition'.")
+            raise ImportError("SpeechRecognition is not installed. Install it with 'uv pip install speechrecognition'")
         elif self.engine == "vosk" and not VOSK_AVAILABLE:
-            raise ImportError("Vosk is not installed. Install it with 'pip install vosk'.")
+            raise ImportError("Vosk is not installed. Install it with 'uv pip install vosk'")
 
         if not PYAUDIO_AVAILABLE:
-            raise ImportError("PyAudio is not installed. Install it with 'pip install pyaudio'.")
+            raise ImportError("PyAudio is not installed. Install it with 'uv pip install pyaudio'")
 
         # Initialize the appropriate recognizer
         if self.engine == "speechrecognition":

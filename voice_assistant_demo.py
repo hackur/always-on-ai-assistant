@@ -46,9 +46,32 @@ except ImportError as e:
     print("Make sure the test_helper.py file exists in the tests directory.")
     sys.exit(1)
 
+# Check for speech recognition engines
+VOSK_AVAILABLE = False
+SPEECHRECOGNITION_AVAILABLE = False
+
+try:
+    import speech_recognition as sr
+    SPEECHRECOGNITION_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    from vosk import Model, KaldiRecognizer
+    VOSK_AVAILABLE = True
+except ImportError:
+    pass
+
+if not (SPEECHRECOGNITION_AVAILABLE or VOSK_AVAILABLE):
+    print("Error: No speech recognition engine available.")
+    print("Please install at least one of the following:")
+    print("  - SpeechRecognition: uv pip install speechrecognition")
+    print("  - Vosk: uv pip install vosk")
+    sys.exit(1)
+
 # Import the speech input layer
 try:
-    from layers.speech_input_layer import SpeechInputLayer, VOSK_AVAILABLE, SPEECHRECOGNITION_AVAILABLE
+    from layers.speech_input_layer import SpeechInputLayer
 except ImportError as e:
     print(f"Error importing speech_input_layer: {e}")
     print("Make sure the speech_input_layer.py file exists in the layers directory.")
@@ -192,8 +215,8 @@ def parse_arguments():
     stt_group = parser.add_argument_group("Speech-to-Text Options")
     stt_group.add_argument(
         "--stt-engine",
-        choices=["speechrecognition", "vosk"],
-        default="speechrecognition" if SPEECHRECOGNITION_AVAILABLE else "vosk",
+        choices=["speechrecognition"] + (["vosk"] if VOSK_AVAILABLE else []),  # Only include 'vosk' if available
+        default="speechrecognition" if SPEECHRECOGNITION_AVAILABLE else ("vosk" if VOSK_AVAILABLE else None), # default to speechrecognition, then vosk if available, otherwise None
         help="The speech recognition engine to use"
     )
     stt_group.add_argument(

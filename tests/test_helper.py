@@ -214,9 +214,24 @@ def create_tts_layer(args: Any) -> Any:
             print_text=True
         )
         return tts_layer
+    except ImportError as e:
+        print(f"Warning: {e}. Attempting to fall back to gTTS.")
+        try:
+            if not GTTS_AVAILABLE:
+                raise ImportError("gTTS is not installed. Please install it with 'pip install gtts pygame'.")
+            tts_layer = TextToSpeechOutputLayer(
+                engine="gtts",
+                language=args.language,
+                print_text=True
+            )
+            return tts_layer
+        except ImportError as e:
+            print(f"Error: {e}. Falling back to text output.")
+            return TextOutputLayer()
+
     except Exception as e:
-        print(f"Error creating TextToSpeechOutputLayer: {e}")
-        sys.exit(1)
+        print(f"Error creating TextToSpeechOutputLayer: {e}. Falling back to text output.")
+        return TextOutputLayer()
 
 
 def get_env_defaults() -> Dict[str, Any]:
