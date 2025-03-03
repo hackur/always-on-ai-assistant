@@ -237,19 +237,7 @@ class TextToSpeechOutputLayer(OutputLayer):
                 raise ImportError(
                     "pyttsx3 is not installed. Install it with 'pip install pyttsx3'."
                 )
-            self.tts_engine = pyttsx3.init()
-
-            # Configure the engine
-            if voice_id is not None:
-                self.tts_engine.setProperty('voice', voice_id)
-            self.tts_engine.setProperty('rate', rate)
-            self.tts_engine.setProperty('volume', volume)
-
-            # List available voices (for debugging)
-            voices = self.tts_engine.getProperty('voices')
-            print(f"Available voices ({len(voices)}):")
-            for i, voice in enumerate(voices):
-                print(f"  {i}: {voice.id} - {voice.name} ({voice.languages})")
+            self.tts_engine = None  # Initialize to None
 
         elif engine == "gtts":
             if not GTTS_AVAILABLE:
@@ -287,11 +275,26 @@ class TextToSpeechOutputLayer(OutputLayer):
         try:
             # Generate and play speech using the configured engine
             if self.engine == "pyttsx3":
+                if self.tts_engine is None:
+                    self.tts_engine = pyttsx3.init()
+                    # Configure the engine
+                    if self.voice_id is not None:
+                        self.tts_engine.setProperty('voice', self.voice_id)
+                    self.tts_engine.setProperty('rate', self.rate)
+                    self.tts_engine.setProperty('volume', self.volume)
+
+                    # List available voices (for debugging)
+                    voices = self.tts_engine.getProperty('voices')
+                    print(f"Available voices ({len(voices)}):")
+                    for i, voice in enumerate(voices):
+                        print(f"  {i}: {voice.id} - {voice.name} ({voice.languages})")
+
                 try:
                     self.tts_engine.say(text)
                     self.tts_engine.runAndWait()
                 finally:
                     self.tts_engine.endLoop()
+
 
             elif self.engine == "gtts":
                 # Create a temporary file for the audio
