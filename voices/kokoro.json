@@ -1,0 +1,8 @@
+{
+  "name": "Kokoro TTS",
+  "description": "High-quality local TTS using the Kokoro-82M model from HuggingFace (82MB)",
+  "engine": "kokoro",
+  "model_id": "hexgrad/Kokoro-82M",
+  "sample_rate": 24000,
+  "language": "en-US"
+}

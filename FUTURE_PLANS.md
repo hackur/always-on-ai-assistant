@@ -24,7 +24,7 @@ This document outlines planned features and improvements for future versions of
 - Adjust speech rate during conversation
 - Control volume dynamically
 - Add more diverse voice profiles
-- Support for additional TTS engines
+- ✅ Support for additional TTS engines (Added Kokoro-82M HuggingFace model)
 - Emotion detection and response tone matching
 
 ## Other Planned Improvements

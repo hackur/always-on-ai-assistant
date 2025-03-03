@@ -18,6 +18,22 @@ gtts>=2.2.3
 # pygame: For audio playback with gTTS
 pygame>=2.1.0
 
+# Kokoro TTS dependencies
+# PyTorch for ML operations
+torch>=2.0.0
+
+# Hugging Face transformers library
+transformers>=4.30.0
+
+# For audio playback with Kokoro TTS
+sounddevice>=0.4.5
+
+# For audio file operations
+soundfile>=0.12.1
+
+# For numerical operations with audio data
+numpy>=1.24.0
+
 # ===================================================================================
 # Speech-to-Text dependencies (ACTIVE)
 # ===================================================================================

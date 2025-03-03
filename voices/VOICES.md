@@ -4,10 +4,11 @@ This document provides information about recommended voice profiles for the Alwa
 
 ## Available Voice Engines
 
-The Always-On AI Assistant supports two text-to-speech engines:
+The Always-On AI Assistant supports three text-to-speech engines:
 
 1. **pyttsx3** - An offline TTS engine that works across platforms
 2. **gTTS** - Google Text-to-Speech (requires internet connection)
+3. **kokoro** - High-quality Kokoro-82M model from HuggingFace (local, 82MB)
 
 ## Listing Available Voices
 
@@ -66,7 +67,6 @@ In addition to selecting a voice, you can customize other voice parameters:
 |-----------|-------------|---------|---------|
 | `--tts-rate` | Speech rate (words per minute) | 150 | `--tts-rate 180` for faster speech |
 | `--tts-volume` | Speech volume (0.0 to 1.0) | 1.0 | `--tts-volume 0.8` for quieter speech |
-
 ## Creating Voice Profiles
 
 You can create custom voice profiles by saving your preferred voice settings in a JSON file in the `voices` directory. For example:
@@ -85,6 +85,34 @@ Save this as `voices/british.json` and then use it with:
 
 ```bash
 python voice_assistant_demo.py --voice-profile british
+```
+
+### Kokoro TTS Voice Profile
+
+The assistant includes a high-quality TTS option using the Kokoro-82M model (from HuggingFace):
+
+```json
+{
+  "name": "Kokoro TTS",
+  "description": "High-quality local TTS using the Kokoro-82M model from HuggingFace",
+  "engine": "kokoro",
+  "model_id": "hexgrad/Kokoro-82M",
+  "sample_rate": 24000,
+  "language": "en-US"
+}
+```
+
+To use the Kokoro TTS voice:
+
+```bash
+python voice_assistant_demo.py --voice-profile kokoro
+```
+
+First-time use will download the model (approximately 82MB) from HuggingFace. Requires PyTorch, transformers, and sounddevice packages. Install with:
+
+```bash
+uv pip install torch transformers numpy soundfile sounddevice
+```
 ```
 
 ## Platform-Specific Notes

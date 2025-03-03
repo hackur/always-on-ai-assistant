@@ -43,6 +43,17 @@ try:
 except ImportError:
     GTTS_AVAILABLE = False
 
+# Import Kokoro TTS dependencies
+try:
+    import torch
+    from transformers import AutoProcessor, AutoModel
+    import numpy as np
+    import soundfile as sf
+    import sounddevice as sd
+    KOKORO_AVAILABLE = True
+except ImportError:
+    KOKORO_AVAILABLE = False
+
 
 class OutputLayer(ABC):
     """
@@ -180,15 +191,18 @@ class TextToSpeechOutputLayer(OutputLayer):
     response to speech. It supports multiple TTS engines:
     - pyttsx3: Offline TTS engine that works across platforms
     - gTTS: Google Text-to-Speech (requires internet connection)
+    - kokoro: Local Kokoro-82M model from HuggingFace (high quality, 82MB model)
 
     Attributes:
-        engine (str): The TTS engine to use ('pyttsx3' or 'gtts').
+        engine (str): The TTS engine to use ('pyttsx3', 'gtts', or 'kokoro').
         voice_id (Optional[str]): The voice ID to use (engine-specific).
         rate (int): The speech rate (words per minute, for pyttsx3).
         volume (float): The speech volume (0.0 to 1.0, for pyttsx3).
         language (str): The language code (for gTTS).
         print_text (bool): Whether to also print the text to the console.
         prefix (str): The prefix to prepend to the output text if printed.
+        model_id (str): Model ID for Kokoro TTS (defaults to "hexgrad/Kokoro-82M").
+        sample_rate (int): Sample rate for audio output (for Kokoro TTS).
     """
 
     def __init__(self,
@@ -198,16 +212,19 @@ class TextToSpeechOutputLayer(OutputLayer):
                  volume: float = 1.0,
                  language: str = "en",
                  print_text: bool = True,
-                 prefix: str = "Assistant: "):
+                 prefix: str = "Assistant: ",
+                 model_id: str = "hexgrad/Kokoro-82M",
+                 sample_rate: int = 24000):
         """
         Initialize the text-to-speech output layer.
 
         Args:
-            engine (str, optional): The TTS engine to use ('pyttsx3' or 'gtts').
+            engine (str, optional): The TTS engine to use ('pyttsx3', 'gtts', or 'kokoro').
                 Defaults to "pyttsx3".
             voice_id (Optional[str], optional): The voice ID to use (engine-specific).
                 For pyttsx3, this is the ID of the voice to use.
                 For gTTS, this is not used.
+                For kokoro, this is not used as the model has a fixed voice.
                 Defaults to None, which uses the default voice.
             rate (int, optional): The speech rate (words per minute, for pyttsx3).
                 Defaults to 150.
@@ -219,6 +236,10 @@ class TextToSpeechOutputLayer(OutputLayer):
                 Defaults to True.
             prefix (str, optional): The prefix to prepend to the output text if printed.
                 Defaults to "Assistant: ".
+            model_id (str, optional): The Hugging Face model ID for Kokoro TTS.
+                Defaults to "hexgrad/Kokoro-82M".
+            sample_rate (int, optional): Sample rate for audio output (for Kokoro TTS).
+                Defaults to 24000.
 
         Raises:
             ImportError: If the required TTS library is not available.
@@ -230,22 +251,40 @@ class TextToSpeechOutputLayer(OutputLayer):
         self.language = language
         self.print_text = print_text
         self.prefix = prefix
+        self.model_id = model_id
+        self.sample_rate = sample_rate
+        self.kokoro_model = None
+        self.kokoro_processor = None
 
         # Initialize the TTS engine
         if engine == "pyttsx3":
             if not PYTTSX3_AVAILABLE:
                 raise ImportError(
-                    "pyttsx3 is not installed. Install it with 'pip install pyttsx3'."
+                    "pyttsx3 is not installed. Install it with 'uv pip install pyttsx3'."
                 )
             self.tts_engine = None  # Initialize to None
 
         elif engine == "gtts":
             if not GTTS_AVAILABLE:
                 raise ImportError(
-                    "gTTS and pygame are not installed. Install them with 'pip install gtts pygame'."
+                    "gTTS and pygame are not installed. Install them with 'uv pip install gtts pygame'."
                 )
             # Initialize pygame mixer for audio playback
             pygame.mixer.init()
+
+        elif engine == "kokoro":
+            if not KOKORO_AVAILABLE:
+                raise ImportError(
+                    "Kokoro TTS dependencies are not installed. Install them with 'uv pip install torch transformers numpy soundfile sounddevice'."
+                )
+            print(f"Initializing Kokoro TTS model from {self.model_id}...")
+            try:
+                # Load the model and processor only when initialized
+                self.kokoro_processor = AutoProcessor.from_pretrained(self.model_id)
+                self.kokoro_model = AutoModel.from_pretrained(self.model_id)
+                print("Kokoro TTS model loaded successfully")
+            except Exception as e:
+                raise ImportError(f"Failed to load Kokoro TTS model: {e}")
 
         else:
             raise ValueError(f"Unsupported TTS engine: {engine}")
@@ -319,6 +358,64 @@ class TextToSpeechOutputLayer(OutputLayer):
                     if os.path.exists(temp_path):
                         os.unlink(temp_path)
 
+            elif self.engine == "kokoro":
+                # Initialize model and processor if not already done
+                if self.kokoro_model is None or self.kokoro_processor is None:
+                    print(f"Loading Kokoro TTS model from {self.model_id}...")
+                    self.kokoro_processor = AutoProcessor.from_pretrained(self.model_id)
+                    self.kokoro_model = AutoModel.from_pretrained(self.model_id)
+                    print("Kokoro TTS model loaded successfully")
+
+                try:
+                    # For long text, split into manageable chunks
+                    import re
+                    max_length = 200  # Maximum sequence length for the model
+                    text_chunks = []
+
+                    if len(text) > max_length:
+                        # Split text at periods, commas, or other natural breaks
+                        sentences = re.split(r'(?<=[.!?,:;])\s+', text)
+                        current_chunk = ""
+
+                        for sentence in sentences:
+                            if len(current_chunk) + len(sentence) < max_length:
+                                current_chunk += " " + sentence if current_chunk else sentence
+                            else:
+                                text_chunks.append(current_chunk)
+                                current_chunk = sentence
+
+                        if current_chunk:
+                            text_chunks.append(current_chunk)
+                    else:
+                        text_chunks = [text]
+
+                    # Process each chunk and play sequentially
+                    for chunk in text_chunks:
+                        print(f"Processing text chunk ({len(chunk)} chars)...")
+
+                        # Process text through the model
+                        inputs = self.kokoro_processor(
+                            text=chunk,
+                            return_tensors="pt"
+                        )
+
+                        # Generate audio
+                        with torch.no_grad():
+                            output = self.kokoro_model.generate(**inputs)
+
+                        # Convert to waveform
+                        waveform = output.cpu().numpy().squeeze()
+
+                        # Play audio using sounddevice
+                        print("Playing audio...")
+                        sd.play(waveform, samplerate=self.sample_rate)
+                        sd.wait()  # Wait for playback to finish
+
+                except Exception as e:
+                    print(f"Error generating speech with Kokoro TTS: {e}")
+                    if "CUDA" in str(e) or "GPU" in str(e):
+                        print("Note: Kokoro TTS works on CPU but may be slow. If you have GPU support, ensure PyTorch is configured correctly.")
+
         except Exception as e:
             print(f"Error generating or playing speech: {e}")
             # TODO: Implement proper error handling and logging
@@ -367,6 +464,8 @@ def create_output_layer(config: Dict[str, Any]) -> OutputLayer:
         language = config.get("TTS_LANGUAGE", "en")
         print_text = config.get("TTS_PRINT_TEXT", "true").lower() == "true"
         prefix = config.get("OUTPUT_PREFIX", "Assistant: ")
+        model_id = config.get("TTS_MODEL_ID", "hexgrad/Kokoro-82M")
+        sample_rate = int(config.get("TTS_SAMPLE_RATE", "24000"))
 
         try:
             return TextToSpeechOutputLayer(
@@ -376,7 +475,9 @@ def create_output_layer(config: Dict[str, Any]) -> OutputLayer:
                 volume=volume,
                 language=language,
                 print_text=print_text,
-                prefix=prefix
+                prefix=prefix,
+                model_id=model_id,
+                sample_rate=sample_rate
             )
         except ImportError as e:
             print(f"Warning: {e} Falling back to text output.")
