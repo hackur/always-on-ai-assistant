@@ -10,6 +10,7 @@ A versatile, modular AI assistant framework that provides continuous assistance 
 - **Customizable Prompts**: Configure how the assistant responds with template-based prompting
 - **Voice Profiles**: Customize the assistant's voice with predefined or custom voice profiles
 - **Logging System**: Comprehensive logging with timestamped log files for each session
+- **macOS Integration**: Easy installation with Globe/Fn key shortcut support on MacBook Pro
 - **Environment Configuration**: Simple setup through environment variables and configuration files
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 
@@ -23,6 +24,8 @@ A versatile, modular AI assistant framework that provides continuous assistance 
 - For STT: microphone
 
 ### Installation
+
+#### Standard Installation
 
 1. Clone the repository:
    ```bash
@@ -50,6 +53,30 @@ A versatile, modular AI assistant framework that provides continuous assistance 
    # Or specify a different model size
    uv run setup_vosk_model.py --model medium
    ```
+
+#### macOS Installation with Globe/Fn Key Support
+
+For MacBook Pro users who want to trigger the assistant with the Globe/Fn key:
+
+```bash
+# Run the macOS installer script
+python install-to-mac.py
+
+# Or specify a custom voice profile
+python install-to-mac.py --voice-profile british
+
+# Or specify a custom wake word
+python install-to-mac.py --wake-word "hey computer"
+```
+
+The installer will:
+1. Copy the assistant files to `~/Applications/AlwaysOnAIAssistant`
+2. Install required dependencies
+3. Set up a launch agent to run at login
+4. Create a keyboard shortcut for the Globe/Fn key
+5. Install the Vosk model for offline speech recognition
+
+After installation, follow the on-screen instructions to complete the keyboard shortcut setup.
 
 ### Running the Assistant
 
@@ -210,6 +237,13 @@ The assistant scripts support various command-line arguments:
 - `--model-type`: Type of LLM to use
 - `--base-url`: Base URL for the LLM API
 
+#### macOS Installer Arguments
+
+- `--voice-profile`: Voice profile to use (default: default)
+- `--model`: LLM model to use (default: mistral:instruct)
+- `--wake-word`: Wake word to activate the assistant (default: "hey assistant")
+- `--install-dir`: Installation directory (default: ~/Applications/AlwaysOnAIAssistant)
+
 ## Project Structure
 
 ```
@@ -217,6 +251,7 @@ always-on-ai-assistant/
 ├── .env.sample                # Sample environment variables
 ├── README.md                  # This file
 ├── VOSK_MODELS.md             # Information about Vosk models
+├── install-to-mac.py          # macOS installation script
 ├── main.py                    # Main entry point
 ├── live_tts_demo.py           # Text-to-speech demo
 ├── live_stt_demo.py           # Speech-to-text demo
