@@ -34,10 +34,10 @@ def setup_paths() -> Dict[str, str]:
     # Get the servers directory
     servers_dir = os.path.abspath(os.path.join(parent_dir, '..', 'servers'))
 
-    # Add the parent directory to sys.path to import layers
+    # Add the parent directory to sys.path to import layers and modules
     sys.path.append(parent_dir)
 
-    # Add the servers directory to sys.path to import query_helper
+    # Add the servers directory to sys.path to import query_common
     sys.path.append(servers_dir)
 
     # Load environment variables from .env.test
@@ -112,7 +112,7 @@ def import_query_helper() -> Callable:
     """
     try:
         print("Importing query_helper module...")
-        from query_helper import query_model
+        from modules.query_helper import query_model
         print(f"✓ query_helper module imported successfully")
         return query_model
     except ImportError as e:
