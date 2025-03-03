@@ -40,13 +40,16 @@ A versatile, modular AI assistant framework that provides continuous assistance 
 
 4. Edit the `.env` file to configure your assistant
 
+5. For speech recognition with Vosk (optional but recommended for offline use):
+   ```bash
+   # Run the setup script to download and install a Vosk model
+   uv run setup_vosk_model.py
+
+   # Or specify a different model size
+   uv run setup_vosk_model.py --model medium
+   ```
+
 ### Running the Assistant
-
-#### Basic Usage
-
-```bash
-uv run main.py
-```
 
 #### Text-to-Speech Demo
 
@@ -54,10 +57,27 @@ uv run main.py
 uv run live_tts_demo.py
 ```
 
-#### With Custom Configuration
+#### Speech-to-Text Demo
 
 ```bash
-uv run live_tts_demo.py --engine gtts --voice "en-US" --rate 150
+# Using SpeechRecognition (online)
+uv run live_stt_demo.py
+
+# Using Vosk (offline)
+uv run live_stt_demo.py --engine vosk
+```
+
+#### Complete Voice Assistant
+
+```bash
+# Basic usage
+uv run voice_assistant_demo.py
+
+# With wake word activation
+uv run voice_assistant_demo.py --wake-word "hey assistant"
+
+# With specific engines
+uv run voice_assistant_demo.py --stt-engine vosk --tts-engine pyttsx3
 ```
 
 ## Configuration Options
@@ -78,17 +98,49 @@ uv run live_tts_demo.py --engine gtts --voice "en-US" --rate 150
 
 ### Command Line Arguments
 
-The `live_tts_demo.py` script supports the following arguments:
+The assistant scripts support various command-line arguments:
 
-- `--engine`: TTS engine to use (`pyttsx3` or `gtts`)
-- `--voice`: Voice ID for pyttsx3
-- `--rate`: Speech rate in words per minute
-- `--volume`: Speech volume (0.0 to 1.0)
-- `--language`: Language code for gTTS
+#### Common Arguments
+
+- `--verbose`: Enable verbose output
+
+#### Text-to-Speech Arguments
+
+- `--tts-engine`: TTS engine to use (`pyttsx3` or `gtts`)
+- `--tts-voice`: Voice ID for pyttsx3
+- `--tts-rate`: Speech rate in words per minute
+- `--tts-volume`: Speech volume (0.0 to 1.0)
+
+#### Speech-to-Text Arguments
+
+- `--stt-engine` or `--engine`: STT engine to use (`speechrecognition` or `vosk`)
+- `--language`: Language code for speech recognition
+- `--vosk-model-path`: Path to the Vosk model directory
+- `--wake-word`: Wake word to activate the assistant (e.g., "hey assistant")
+
+#### LLM Arguments
+
 - `--model`: LLM model to use
 - `--model-type`: Type of LLM to use
 - `--base-url`: Base URL for the LLM API
-- `--verbose`: Enable verbose output
+
+## Speech Recognition
+
+The assistant supports two speech recognition engines:
+
+### SpeechRecognition
+
+- Uses Google's speech recognition API by default
+- Requires an internet connection
+- High accuracy
+- No setup required
+
+### Vosk
+
+- Offline speech recognition
+- Privacy-focused (no data sent to external servers)
+- Requires downloading a model
+- See [VOSK_MODELS.md](VOSK_MODELS.md) for more information
 
 ## Project Structure
 
@@ -96,13 +148,21 @@ The `live_tts_demo.py` script supports the following arguments:
 always-on-ai-assistant/
 ├── .env.sample                # Sample environment variables
 ├── README.md                  # This file
+├── VOSK_MODELS.md             # Information about Vosk models
 ├── main.py                    # Main entry point
 ├── live_tts_demo.py           # Text-to-speech demo
+├── live_stt_demo.py           # Speech-to-text demo
+├── voice_assistant_demo.py    # Complete voice assistant demo
+├── setup_vosk_model.py        # Script to download Vosk models
 ├── requirements.txt           # Project dependencies
+├── models/                    # Directory for Vosk models
 ├── ai_docs/                   # AI documentation
 ├── commands/                  # Command implementations
 ├── images/                    # Project images
 ├── layers/                    # Architectural layers
+│   ├── __init__.py
+│   ├── speech_input_layer.py  # Speech recognition layer
+│   └── ...                    # Other layers
 ├── modules/                   # Core modules
 │   ├── __init__.py
 │   ├── assistant_config.py    # Configuration handling
@@ -117,6 +177,7 @@ always-on-ai-assistant/
     ├── __init__.py
     ├── .env.test              # Test environment variables
     ├── test_helper.py         # Test utilities
+    ├── test_speech_input_layer.py # Speech input tests
     └── ...                    # Various test modules
 ```
 
@@ -127,7 +188,7 @@ always-on-ai-assistant/
 The assistant uses a modular architecture that makes it easy to add new voice capabilities:
 
 1. For new TTS engines, extend the `TextToSpeechOutputLayer` class
-2. For new STT engines, implement a new input layer based on the existing patterns
+2. For new STT engines, extend the `SpeechInputLayer` class
 
 ### Custom Commands
 

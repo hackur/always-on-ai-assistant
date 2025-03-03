@@ -191,21 +191,25 @@ def create_tts_layer(args: Any) -> Any:
     """
     TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE = import_tts_modules()
 
+    # Get the engine name from the appropriate argument
+    # Check for both tts_engine (voice_assistant_demo.py) and engine (live_tts_demo.py)
+    engine = getattr(args, 'tts_engine', getattr(args, 'engine', 'pyttsx3'))
+
     # Check if the selected engine is available
-    if args.engine == "pyttsx3" and not PYTTSX3_AVAILABLE:
+    if engine == "pyttsx3" and not PYTTSX3_AVAILABLE:
         print("Error: pyttsx3 is not installed. Install it with 'pip install pyttsx3'.")
         sys.exit(1)
-    elif args.engine == "gtts" and not GTTS_AVAILABLE:
+    elif engine == "gtts" and not GTTS_AVAILABLE:
         print("Error: gTTS and pygame are not installed. Install them with 'pip install gtts pygame'.")
         sys.exit(1)
 
     # Create a TextToSpeechOutputLayer instance
     try:
         tts_layer = TextToSpeechOutputLayer(
-            engine=args.engine,
-            voice_id=args.voice,
-            rate=args.rate,
-            volume=args.volume,
+            engine=engine,
+            voice_id=args.tts_voice if hasattr(args, 'tts_voice') else args.voice,
+            rate=args.tts_rate if hasattr(args, 'tts_rate') else args.rate,
+            volume=args.tts_volume if hasattr(args, 'tts_volume') else args.volume,
             language=args.language,
             print_text=True
         )
