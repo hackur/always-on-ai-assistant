@@ -1,0 +1,9 @@
+{
+  "name": "British Assistant",
+  "description": "Formal British male voice, good for professional contexts",
+  "engine": "pyttsx3",
+  "voice_id": "com.apple.voice.compact.en-GB.Daniel",
+  "rate": 145,
+  "volume": 0.9,
+  "language": "en-GB"
+}

@@ -24,6 +24,7 @@ import os
 import json
 import time
 import logging
+import threading
 from typing import Optional, Dict, Any, List, Union, Callable
 
 # Check for SpeechRecognition
@@ -90,6 +91,12 @@ class SpeechInputLayer:
         self.callback = callback
         self.print_text = print_text
 
+        # Add flags for pausing and stopping
+        self.is_paused = False
+        self.is_listening = False
+        self.listening_thread = None
+        self.stream = None
+
         # Check if the required dependencies are available
         if self.engine == "speechrecognition" and not SPEECHRECOGNITION_AVAILABLE:
             raise ImportError("SpeechRecognition is not installed. Install it with 'pip install speechrecognition'.")
@@ -130,6 +137,7 @@ class SpeechInputLayer:
                 os.path.join(os.path.expanduser("~"), "vosk-model-small"),
                 os.path.join(os.path.expanduser("~"), "vosk-model-en-us-0.22"),
                 os.path.join(os.getcwd(), "vosk-model"),
+                os.path.join(os.getcwd(), "models", "vosk-model-small-en-us-0.15"),
             ]
 
             for path in default_paths:
@@ -318,6 +326,25 @@ class SpeechInputLayer:
         if not self.callback:
             raise ValueError("No callback function provided for continuous listening.")
 
+        # Set the listening flag
+        self.is_listening = True
+        self.is_paused = False
+
+        # Start listening in a separate thread
+        self.listening_thread = threading.Thread(
+            target=self._listen_continuously_thread,
+            args=(mic_index,)
+        )
+        self.listening_thread.daemon = True
+        self.listening_thread.start()
+
+    def _listen_continuously_thread(self, mic_index=None):
+        """
+        Thread function for continuous listening.
+
+        Args:
+            mic_index: Optional microphone index to use
+        """
         if self.engine == "speechrecognition":
             self._listen_continuously_speechrecognition(mic_index)
         elif self.engine == "vosk":
@@ -342,7 +369,12 @@ class SpeechInputLayer:
                 print("Listening continuously... (Press Ctrl+C to stop)")
 
             try:
-                while True:
+                while self.is_listening:
+                    # Check if listening is paused
+                    if self.is_paused:
+                        time.sleep(0.1)  # Sleep briefly to avoid busy waiting
+                        continue
+
                     if self.print_text:
                         print("Listening...")
                     try:
@@ -354,6 +386,10 @@ class SpeechInputLayer:
                     except sr.WaitTimeoutError:
                         if self.print_text:
                             print("Listening timed out. No speech detected.")
+                        continue
+
+                    # Check if we've been paused while listening
+                    if self.is_paused:
                         continue
 
                     # Try to recognize the speech
@@ -383,7 +419,7 @@ class SpeechInputLayer:
         """
         # Set up the audio stream
         device_index = mic_index if mic_index is not None else None
-        stream = self.p.open(
+        self.stream = self.p.open(
             format=pyaudio.paInt16,
             channels=1,
             rate=16000,
@@ -399,13 +435,22 @@ class SpeechInputLayer:
             print("Listening continuously... (Press Ctrl+C to stop)")
 
         # Start listening
-        stream.start_stream()
+        self.stream.start_stream()
 
         try:
-            while True:
-                data = stream.read(4000, exception_on_overflow=False)
+            while self.is_listening:
+                # Check if listening is paused
+                if self.is_paused:
+                    time.sleep(0.1)  # Sleep briefly to avoid busy waiting
+                    continue
+
+                data = self.stream.read(4000, exception_on_overflow=False)
                 if len(data) == 0:
                     break
+
+                # Check if we've been paused while processing
+                if self.is_paused:
+                    continue
 
                 if rec.AcceptWaveform(data):
                     result = json.loads(rec.Result())
@@ -419,11 +464,37 @@ class SpeechInputLayer:
                 print("\nStopped listening.")
         finally:
             # Clean up
-            stream.stop_stream()
-            stream.close()
+            if self.stream:
+                self.stream.stop_stream()
+                self.stream.close()
+                self.stream = None
+
+    def pause(self):
+        """Pause listening temporarily."""
+        if self.print_text:
+            print("Pausing speech recognition...")
+        self.is_paused = True
+
+    def resume(self):
+        """Resume listening after being paused."""
+        if self.print_text:
+            print("Resuming speech recognition...")
+        self.is_paused = False
+
+    def stop(self):
+        """Stop listening completely."""
+        if self.print_text:
+            print("Stopping speech recognition...")
+        self.is_listening = False
+        self.is_paused = False
+
+        # Wait for the listening thread to finish
+        if self.listening_thread and self.listening_thread.is_alive():
+            self.listening_thread.join(timeout=1.0)
 
     def close(self):
         """Clean up resources."""
+        self.stop()
         if self.engine == "vosk" and hasattr(self, 'p'):
             self.p.terminate()
 

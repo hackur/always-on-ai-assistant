@@ -1,0 +1,9 @@
+{
+  "name": "My Custom Voice",
+  "description": "Custom voice with specific settings",
+  "engine": "pyttsx3",
+  "voice_id": "com.apple.voice.compact.en-US.Samantha",
+  "rate": 150,
+  "volume": 0.9,
+  "language": "en-US"
+}

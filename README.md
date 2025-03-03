@@ -8,6 +8,8 @@ A versatile, modular AI assistant framework that provides continuous assistance 
 - **Modular Architecture**: Easily extensible with new capabilities and integrations
 - **Multiple LLM Support**: Compatible with various Large Language Models (Ollama, OpenAI, Anthropic, etc.)
 - **Customizable Prompts**: Configure how the assistant responds with template-based prompting
+- **Voice Profiles**: Customize the assistant's voice with predefined or custom voice profiles
+- **Logging System**: Comprehensive logging with timestamped log files for each session
 - **Environment Configuration**: Simple setup through environment variables and configuration files
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 
@@ -78,51 +80,70 @@ uv run voice_assistant_demo.py --wake-word "hey assistant"
 
 # With specific engines
 uv run voice_assistant_demo.py --stt-engine vosk --tts-engine pyttsx3
+
+# With verbose logging
+uv run voice_assistant_demo.py --verbose
 ```
 
-## Configuration Options
+## Voice Profiles
 
-### Environment Variables
+The assistant supports customizable voice profiles that define the voice characteristics:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ASSISTANT_PROMPT_TEMPLATE` | Template for LLM prompts | Basic helpful assistant template |
-| `TTS_ENGINE` | Text-to-speech engine | `pyttsx3` |
-| `TTS_VOICE_ID` | Voice ID for TTS | System default |
-| `TTS_RATE` | Speech rate (words per minute) | `150` |
-| `TTS_VOLUME` | Speech volume (0.0 to 1.0) | `1.0` |
-| `TTS_LANGUAGE` | Language code for gTTS | `en` |
-| `LLM_MODEL_TYPE` | Type of LLM to use | `ollama` |
-| `LLM_MODEL_NAME` | Name of the LLM model | `mistralai/Mistral-7B-Instruct-v0.1` |
-| `LLM_BASE_URL` | Base URL for the LLM API | `http://localhost:11434` |
+### Listing Available Voices
 
-### Command Line Arguments
+To see all available system voices:
 
-The assistant scripts support various command-line arguments:
+```bash
+uv run voice_assistant_demo.py --list-voices
+```
 
-#### Common Arguments
+### Using Voice Profiles
 
-- `--verbose`: Enable verbose output
+The assistant comes with several predefined voice profiles:
 
-#### Text-to-Speech Arguments
+```bash
+# List available voice profiles
+uv run voice_assistant_demo.py --list-profiles
 
-- `--tts-engine`: TTS engine to use (`pyttsx3` or `gtts`)
-- `--tts-voice`: Voice ID for pyttsx3
-- `--tts-rate`: Speech rate in words per minute
-- `--tts-volume`: Speech volume (0.0 to 1.0)
+# Use a specific voice profile
+uv run voice_assistant_demo.py --voice-profile british
+```
 
-#### Speech-to-Text Arguments
+### Creating Custom Voice Profiles
 
-- `--stt-engine` or `--engine`: STT engine to use (`speechrecognition` or `vosk`)
-- `--language`: Language code for speech recognition
-- `--vosk-model-path`: Path to the Vosk model directory
-- `--wake-word`: Wake word to activate the assistant (e.g., "hey assistant")
+You can create custom voice profiles by adding JSON files to the `voices` directory. See [VOICES.md](voices/VOICES.md) for details.
 
-#### LLM Arguments
+Example voice profile:
 
-- `--model`: LLM model to use
-- `--model-type`: Type of LLM to use
-- `--base-url`: Base URL for the LLM API
+```json
+{
+  "name": "My Custom Voice",
+  "description": "Custom voice with specific settings",
+  "engine": "pyttsx3",
+  "voice_id": "com.apple.voice.compact.en-US.Samantha",
+  "rate": 150,
+  "volume": 0.9,
+  "language": "en-US"
+}
+```
+
+## Logging System
+
+The assistant includes a comprehensive logging system that records all activities:
+
+- Logs are stored in the `logs` directory
+- Each session creates a timestamped log file (e.g., `voice_assistant_2025-03-03_00-51-23.log`)
+- Logs include information about:
+  - Voice profile and engine settings
+  - Speech recognition events
+  - LLM queries and responses
+  - Errors and warnings
+
+To enable verbose logging:
+
+```bash
+uv run voice_assistant_demo.py --verbose
+```
 
 ## Speech Recognition
 
@@ -142,6 +163,53 @@ The assistant supports two speech recognition engines:
 - Requires downloading a model
 - See [VOSK_MODELS.md](VOSK_MODELS.md) for more information
 
+## Configuration Options
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ASSISTANT_PROMPT_TEMPLATE` | Template for LLM prompts | Basic helpful assistant template |
+| `TTS_ENGINE` | Text-to-speech engine | `pyttsx3` |
+| `TTS_VOICE_ID` | Voice ID for TTS | System default |
+| `TTS_RATE` | Speech rate (words per minute) | `150` |
+| `TTS_VOLUME` | Speech volume (0.0 to 1.0) | `1.0` |
+| `TTS_LANGUAGE` | Language code for gTTS | `en` |
+| `LLM_MODEL_TYPE` | Type of LLM to use | `ollama` |
+| `LLM_MODEL_NAME` | Name of the LLM model | `mistral:instruct` |
+| `LLM_BASE_URL` | Base URL for the LLM API | `http://localhost:11434` |
+
+### Command Line Arguments
+
+The assistant scripts support various command-line arguments:
+
+#### Common Arguments
+
+- `--verbose`: Enable verbose output and detailed logging
+
+#### Text-to-Speech Arguments
+
+- `--tts-engine`: TTS engine to use (`pyttsx3` or `gtts`)
+- `--tts-voice`: Voice ID for pyttsx3
+- `--tts-rate`: Speech rate in words per minute
+- `--tts-volume`: Speech volume (0.0 to 1.0)
+- `--voice-profile`: Use a predefined voice profile
+- `--list-voices`: List available system voices
+- `--list-profiles`: List available voice profiles
+
+#### Speech-to-Text Arguments
+
+- `--stt-engine` or `--engine`: STT engine to use (`speechrecognition` or `vosk`)
+- `--language`: Language code for speech recognition
+- `--vosk-model-path`: Path to the Vosk model directory
+- `--wake-word`: Wake word to activate the assistant (e.g., "hey assistant")
+
+#### LLM Arguments
+
+- `--model`: LLM model to use
+- `--model-type`: Type of LLM to use
+- `--base-url`: Base URL for the LLM API
+
 ## Project Structure
 
 ```
@@ -155,13 +223,20 @@ always-on-ai-assistant/
 ├── voice_assistant_demo.py    # Complete voice assistant demo
 ├── setup_vosk_model.py        # Script to download Vosk models
 ├── requirements.txt           # Project dependencies
+├── logs/                      # Directory for log files
 ├── models/                    # Directory for Vosk models
+├── voices/                    # Voice profiles
+│   ├── VOICES.md              # Documentation for voice profiles
+│   ├── default.json           # Default voice profile
+│   ├── british.json           # British voice profile
+│   └── technical.json         # Technical voice profile
 ├── ai_docs/                   # AI documentation
 ├── commands/                  # Command implementations
 ├── images/                    # Project images
 ├── layers/                    # Architectural layers
 │   ├── __init__.py
 │   ├── speech_input_layer.py  # Speech recognition layer
+│   ├── output_layer.py        # Output layer (including TTS)
 │   └── ...                    # Other layers
 ├── modules/                   # Core modules
 │   ├── __init__.py
@@ -170,6 +245,7 @@ always-on-ai-assistant/
 │   ├── data_types.py          # Data type definitions
 │   ├── execute_python.py      # Python execution utilities
 │   ├── ollama.py              # Ollama integration
+│   ├── query_helper.py        # LLM query helper
 │   ├── typer_agent.py         # Typer CLI agent
 │   └── utils.py               # Utility functions
 ├── prompts/                   # Prompt templates

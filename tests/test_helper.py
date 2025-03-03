@@ -233,6 +233,6 @@ def get_env_defaults() -> Dict[str, Any]:
         "tts_volume": float(os.environ.get("TTS_VOLUME", "1.0")),
         "tts_language": os.environ.get("TTS_LANGUAGE", "en"),
         "llm_model_type": os.environ.get("LLM_MODEL_TYPE", "ollama"),
-        "llm_model_name": os.environ.get("LLM_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.1"),
+        "llm_model_name": os.environ.get("LLM_MODEL_NAME", "mistral:instruct"),
         "llm_base_url": os.environ.get("LLM_BASE_URL", "http://localhost:11434"),
     }

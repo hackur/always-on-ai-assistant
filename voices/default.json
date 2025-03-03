@@ -1,0 +1,9 @@
+{
+  "name": "Default Assistant",
+  "description": "Default voice profile with a clear, natural female voice",
+  "engine": "pyttsx3",
+  "voice_id": "com.apple.voice.compact.en-US.Samantha",
+  "rate": 150,
+  "volume": 1.0,
+  "language": "en-US"
+}
