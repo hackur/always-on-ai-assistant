@@ -242,9 +242,9 @@ def parse_arguments():
     tts_group = parser.add_argument_group("Text-to-Speech Options")
     tts_group.add_argument(
         "--tts-engine",
-        choices=["pyttsx3", "gtts"],
+        choices=["pyttsx3", "gtts", "kokoro"],
         default="gtts",
-        help="The TTS engine to use (default: gtts for better reliability)"
+        help="The TTS engine to use (default: gtts for better reliability, kokoro for HuggingFace-based high-quality TTS)"
     )
     tts_group.add_argument(
         "--tts-voice",
@@ -407,8 +407,8 @@ def main():
     logger.info("Imported query_helper module")
 
     # Import the TTS modules
-    TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE = import_tts_modules()
-    logger.info(f"Imported TTS modules. pyttsx3: {PYTTSX3_AVAILABLE}, gTTS: {GTTS_AVAILABLE}")
+    TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE, KOKORO_AVAILABLE = import_tts_modules()
+    logger.info(f"Imported TTS modules. pyttsx3: {PYTTSX3_AVAILABLE}, gTTS: {GTTS_AVAILABLE}, Kokoro: {KOKORO_AVAILABLE}")
 
     # Create a TextToSpeechOutputLayer instance
     tts_layer = create_tts_layer(args)

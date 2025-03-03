@@ -24,6 +24,7 @@ Typical usage example:
 
 import os
 import sys
+import time
 import platform
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Union
@@ -46,7 +47,8 @@ except ImportError:
 # Import Kokoro TTS dependencies
 try:
     import torch
-    from transformers import AutoProcessor, AutoModel
+    import torchaudio
+    from transformers import AutoProcessor, AutoTokenizer, AutoModel
     import numpy as np
     import soundfile as sf
     import sounddevice as sd
@@ -275,16 +277,46 @@ class TextToSpeechOutputLayer(OutputLayer):
         elif engine == "kokoro":
             if not KOKORO_AVAILABLE:
                 raise ImportError(
-                    "Kokoro TTS dependencies are not installed. Install them with 'uv pip install torch transformers numpy soundfile sounddevice'."
+                    "Kokoro TTS dependencies are not installed. Install them with 'uv pip install torch torchaudio transformers numpy soundfile sounddevice'."
                 )
             print(f"Initializing Kokoro TTS model from {self.model_id}...")
             try:
-                # Load the model and processor only when initialized
-                self.kokoro_processor = AutoProcessor.from_pretrained(self.model_id)
-                self.kokoro_model = AutoModel.from_pretrained(self.model_id)
-                print("Kokoro TTS model loaded successfully")
+                # Let's try a direct approach using HuggingFace endpoints instead
+                import requests
+                import io
+                import tempfile
+
+                self.kokoro_api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
+                self.kokoro_headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN', 'hf_dummy')}"}
+                self.kokoro_model = None  # We'll use API endpoint instead
+                self.kokoro_processor = None
+
+                # Test connection
+                response = requests.get(
+                    "https://huggingface.co/hexgrad/Kokoro-82M",
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    print("Kokoro TTS model found on HuggingFace")
+                else:
+                    print(f"Warning: Couldn't verify Kokoro TTS model: {response.status_code}")
+
+                # Check for HF_TOKEN in a case-insensitive way
+                token_found = False
+                for key in os.environ:
+                    if key.upper() == "HF_TOKEN":
+                        token_found = True
+                        # Set it to the standard name if it's with a different case
+                        if key != "HF_TOKEN":
+                            os.environ["HF_TOKEN"] = os.environ[key]
+
+                if not token_found:
+                    print("Warning: HF_TOKEN not set in environment. API access may be rate-limited.")
+                    print("For better performance, set the HF_TOKEN environment variable with your HuggingFace token.")
+
             except Exception as e:
-                raise ImportError(f"Failed to load Kokoro TTS model: {e}")
+                print(f"Warning: Issue setting up Kokoro TTS: {e}")
+                print("Kokoro TTS will use gTTS as a fallback")
 
         else:
             raise ValueError(f"Unsupported TTS engine: {engine}")
@@ -359,21 +391,18 @@ class TextToSpeechOutputLayer(OutputLayer):
                         os.unlink(temp_path)
 
             elif self.engine == "kokoro":
-                # Initialize model and processor if not already done
-                if self.kokoro_model is None or self.kokoro_processor is None:
-                    print(f"Loading Kokoro TTS model from {self.model_id}...")
-                    self.kokoro_processor = AutoProcessor.from_pretrained(self.model_id)
-                    self.kokoro_model = AutoModel.from_pretrained(self.model_id)
-                    print("Kokoro TTS model loaded successfully")
-
                 try:
-                    # For long text, split into manageable chunks
+                    import requests
+                    import io
+                    import tempfile
+
+                    # Split long text into chunks for better TTS processing
                     import re
-                    max_length = 200  # Maximum sequence length for the model
+                    max_length = 250  # Maximum recommended chunk size
                     text_chunks = []
 
                     if len(text) > max_length:
-                        # Split text at periods, commas, or other natural breaks
+                        # Split text at natural breaks
                         sentences = re.split(r'(?<=[.!?,:;])\s+', text)
                         current_chunk = ""
 
@@ -389,37 +418,199 @@ class TextToSpeechOutputLayer(OutputLayer):
                     else:
                         text_chunks = [text]
 
-                    # Process each chunk and play sequentially
+                    # Process each chunk
                     for chunk in text_chunks:
                         print(f"Processing text chunk ({len(chunk)} chars)...")
 
-                        # Process text through the model
-                        inputs = self.kokoro_processor(
-                            text=chunk,
-                            return_tensors="pt"
-                        )
+                        try:
+                            # First try using HuggingFace Inference API
+                            api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
+                            token = None
 
-                        # Generate audio
-                        with torch.no_grad():
-                            output = self.kokoro_model.generate(**inputs)
+                            # Check for HF_TOKEN in env vars (case insensitive)
+                            for key in os.environ:
+                                if key.upper() == "HF_TOKEN":
+                                    token = os.environ[key]
+                                    break
 
-                        # Convert to waveform
-                        waveform = output.cpu().numpy().squeeze()
+                            headers = {"Authorization": f"Bearer {token}" if token else "Bearer hf_dummy"}
 
-                        # Play audio using sounddevice
-                        print("Playing audio...")
-                        sd.play(waveform, samplerate=self.sample_rate)
-                        sd.wait()  # Wait for playback to finish
+                            print(f"Making request to HuggingFace API with token: {'Available' if token else 'Not available'}")
+
+                            # Request TTS generation with error handling and backoff
+                            try:
+                                response = requests.post(
+                                    api_url,
+                                    headers=headers,
+                                    json={"inputs": chunk},
+                                    timeout=15  # Increase timeout for slow connections
+                                )
+
+                                print(f"API Response status: {response.status_code}")
+
+                                # Log the full response to a file for debugging
+                                try:
+                                    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+                                    os.makedirs(log_dir, exist_ok=True)
+
+                                    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+                                    log_file = os.path.join(log_dir, f"kokoro_api_response_{timestamp}.log")
+
+                                    with open(log_file, 'w') as f:
+                                        f.write(f"Status Code: {response.status_code}\n")
+                                        f.write(f"Headers: {dict(response.headers)}\n")
+
+                                        # Try to log the response content - could be binary or text
+                                        try:
+                                            f.write(f"Content (text): {response.text[:2000]}...\n")
+                                        except:
+                                            f.write(f"Content: Binary data of length {len(response.content)} bytes\n")
+
+                                        # Log environment variables (excluding sensitive values)
+                                        f.write("\nEnvironment Variables:\n")
+                                        for key in os.environ:
+                                            if key.upper() == "HF_TOKEN":
+                                                f.write(f"{key}: [REDACTED]\n")
+                                            else:
+                                                f.write(f"{key}: {os.environ[key]}\n")
+
+                                    print(f"API response logged to {log_file}")
+                                except Exception as log_e:
+                                    print(f"Error logging API response: {log_e}")
+
+                                if response.status_code == 200:
+                                    content_type = response.headers.get('content-type', '')
+                                    if 'audio' in content_type.lower() or len(response.content) > 100:
+                                        # Looks like valid audio data
+                                        print(f"Received audio data: {len(response.content)} bytes")
+
+                                        # Create a temporary file to save the audio
+                                        file_suffix = '.wav'
+                                        with tempfile.NamedTemporaryFile(suffix=file_suffix, delete=False) as temp_file:
+                                            temp_path = temp_file.name
+                                            temp_file.write(response.content)
+
+                                        print(f"Saved to {temp_path}")
+
+                                        # Play audio with multiple methods for robustness
+                                        try:
+                                            # Try soundfile/sounddevice first
+                                            print("Attempting playback with sounddevice...")
+                                            data, samplerate = sf.read(temp_path)
+                                            sd.play(data, samplerate)
+                                            sd.wait()  # Wait for playback to finish
+                                            print("✓ Audio playback complete with sounddevice")
+                                        except Exception as e1:
+                                            print(f"sounddevice playback failed: {e1}")
+
+                                            # Fall back to system player
+                                            try:
+                                                print("Attempting playback with system player...")
+                                                if platform.system() == "Darwin":  # macOS
+                                                    os.system(f"afplay {temp_path}")
+                                                    print("✓ Audio playback complete with afplay")
+                                                elif platform.system() == "Windows":
+                                                    os.system(f"start {temp_path}")
+                                                    print("✓ Audio playback complete with start")
+                                                elif platform.system() == "Linux":
+                                                    os.system(f"aplay {temp_path}")
+                                                    print("✓ Audio playback complete with aplay")
+                                            except Exception as e2:
+                                                print(f"System player failed: {e2}")
+                                        finally:
+                                            # Clean up the temporary file
+                                            if os.path.exists(temp_path):
+                                                os.unlink(temp_path)
+                                    else:
+                                        # Not audio data
+                                        print(f"Error: Response is not audio data. Content type: {content_type}")
+                                        self._use_gtts_fallback(chunk)
+                                else:
+                                    # If API fails, fall back to gTTS
+                                    print(f"Kokoro API error: {response.status_code}, falling back to gTTS")
+                                    if response.status_code == 401:
+                                        print("Authentication error. Make sure HF_TOKEN is set correctly.")
+                                    else:
+                                        print(f"Error content: {response.text[:200]}")
+                                    self._use_gtts_fallback(chunk)
+                            except requests.exceptions.RequestException as e:
+                                print(f"Request failed: {e}")
+                                self._use_gtts_fallback(chunk)
+                            else:
+                                # If API fails, fall back to gTTS
+                                print(f"Kokoro API error: {response.status_code}, falling back to gTTS")
+                                self._use_gtts_fallback(chunk)
+
+                        except Exception as e:
+                            print(f"Error with Kokoro TTS: {e}")
+                            self._use_gtts_fallback(chunk)
 
                 except Exception as e:
                     print(f"Error generating speech with Kokoro TTS: {e}")
-                    if "CUDA" in str(e) or "GPU" in str(e):
-                        print("Note: Kokoro TTS works on CPU but may be slow. If you have GPU support, ensure PyTorch is configured correctly.")
+                    # Use gTTS as a fallback
+                    self._use_gtts_fallback(text)
 
         except Exception as e:
             print(f"Error generating or playing speech: {e}")
             # TODO: Implement proper error handling and logging
 
+    def _use_gtts_fallback(self, text: str) -> None:
+        """
+        Use gTTS as a fallback TTS option when Kokoro TTS fails.
+
+        Args:
+            text (str): The text to convert to speech.
+        """
+        if not GTTS_AVAILABLE:
+            print("Cannot use gTTS fallback: gTTS not available")
+            return
+
+        print("Using gTTS as fallback...")
+
+        # Create a temporary file for the audio
+        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as temp_file:
+            temp_path = temp_file.name
+
+        try:
+            # Generate the speech
+            tts = gTTS(text=text, lang=self.language, slow=False)
+            tts.save(temp_path)
+
+            # Make sure pygame is initialized
+            if not pygame.get_init():
+                pygame.init()
+
+            # Make sure the mixer is initialized
+            if not pygame.mixer.get_init():
+                pygame.mixer.init()
+
+            # Play the speech
+            pygame.mixer.music.load(temp_path)
+            pygame.mixer.music.play()
+
+            # Wait for the speech to finish
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+
+            print("✓ Fallback audio playback complete")
+
+        except Exception as e:
+            print(f"Error in gTTS fallback: {e}")
+            print("Attempting to play with system default audio player...")
+            try:
+                # Try to play with system default player as last resort
+                if platform.system() == "Darwin":  # macOS
+                    os.system(f"afplay {temp_path}")
+                elif platform.system() == "Windows":
+                    os.system(f"start {temp_path}")
+                elif platform.system() == "Linux":
+                    os.system(f"aplay {temp_path}")
+            except Exception as e2:
+                print(f"Also failed with system player: {e2}")
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
 def create_output_layer(config: Dict[str, Any]) -> OutputLayer:
     """

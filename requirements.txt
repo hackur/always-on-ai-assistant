@@ -34,6 +34,9 @@ soundfile>=0.12.1
 # For numerical operations with audio data
 numpy>=1.24.0
 
+# For HuggingFace API communication
+requests>=2.28.0
+
 # ===================================================================================
 # Speech-to-Text dependencies (ACTIVE)
 # ===================================================================================

@@ -72,15 +72,16 @@ def print_debug_info(paths: Dict[str, str]) -> None:
     print("=" * 80)
 
 
-def import_tts_modules() -> Tuple[Any, bool, bool]:
+def import_tts_modules() -> Tuple[Any, bool, bool, bool]:
     """
     Import the text-to-speech modules with error handling.
 
     Returns:
-        Tuple[Any, bool, bool]: A tuple containing:
+        Tuple[Any, bool, bool, bool]: A tuple containing:
             - The TextToSpeechOutputLayer class
             - Whether pyttsx3 is available
             - Whether gTTS is available
+            - Whether Kokoro TTS is available
 
     Raises:
         ImportError: If the output layer module cannot be imported.
@@ -90,12 +91,14 @@ def import_tts_modules() -> Tuple[Any, bool, bool]:
         from layers.output_layer import (
             TextToSpeechOutputLayer,
             PYTTSX3_AVAILABLE,
-            GTTS_AVAILABLE
+            GTTS_AVAILABLE,
+            KOKORO_AVAILABLE
         )
         print(f"✓ Output layer module imported successfully")
         print(f"  - pyttsx3 available: {PYTTSX3_AVAILABLE}")
         print(f"  - gTTS available: {GTTS_AVAILABLE}")
-        return TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE
+        print(f"  - Kokoro TTS available: {KOKORO_AVAILABLE}")
+        return TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE, KOKORO_AVAILABLE
     except ImportError as e:
         print(f"✗ Error importing output layer: {e}")
         print("Make sure you have installed the required dependencies.")
@@ -189,7 +192,7 @@ def create_tts_layer(args: Any) -> Any:
     Returns:
         Any: The TextToSpeechOutputLayer instance.
     """
-    TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE = import_tts_modules()
+    TextToSpeechOutputLayer, PYTTSX3_AVAILABLE, GTTS_AVAILABLE, KOKORO_AVAILABLE = import_tts_modules()
 
     # Get the engine name from the appropriate argument
     # Check for both tts_engine (voice_assistant_demo.py) and engine (live_tts_demo.py)
@@ -197,21 +200,30 @@ def create_tts_layer(args: Any) -> Any:
 
     # Check if the selected engine is available
     if engine == "pyttsx3" and not PYTTSX3_AVAILABLE:
-        print("Error: pyttsx3 is not installed. Install it with 'pip install pyttsx3'. To use gTTS instead, run with '--tts-engine gtts'")
+        print("Error: pyttsx3 is not installed. Install it with 'uv pip install pyttsx3'. To use gTTS instead, run with '--tts-engine gtts'")
         sys.exit(1)
     elif engine == "gtts" and not GTTS_AVAILABLE:
-        print("Error: gTTS and pygame are not installed. Install them with 'pip install gtts pygame'. To use pyttsx3 instead, run with '--tts-engine pyttsx3'")
+        print("Error: gTTS and pygame are not installed. Install them with 'uv pip install gtts pygame'. To use pyttsx3 instead, run with '--tts-engine pyttsx3'")
+        sys.exit(1)
+    elif engine == "kokoro" and not KOKORO_AVAILABLE:
+        print("Error: Kokoro TTS dependencies are not installed. Install them with 'uv pip install torch torchaudio transformers numpy soundfile sounddevice requests'. To use gTTS instead, run with '--tts-engine gtts'")
         sys.exit(1)
 
     # Create a TextToSpeechOutputLayer instance
     try:
+        # Get optional Kokoro-specific parameters
+        model_id = getattr(args, 'model_id', "hexgrad/Kokoro-82M") if engine == "kokoro" else None
+        sample_rate = getattr(args, 'sample_rate', 24000) if engine == "kokoro" else None
+
         tts_layer = TextToSpeechOutputLayer(
             engine=engine,
-            voice_id=args.tts_voice if hasattr(args, 'tts_voice') else args.voice,
-            rate=args.tts_rate if hasattr(args, 'tts_rate') else args.rate,
-            volume=args.tts_volume if hasattr(args, 'tts_volume') else args.volume,
+            voice_id=args.tts_voice if hasattr(args, 'tts_voice') else getattr(args, 'voice', None),
+            rate=args.tts_rate if hasattr(args, 'tts_rate') else getattr(args, 'rate', 150),
+            volume=args.tts_volume if hasattr(args, 'tts_volume') else getattr(args, 'volume', 1.0),
             language=args.language,
-            print_text=True
+            print_text=True,
+            model_id=model_id,
+            sample_rate=sample_rate
         )
         return tts_layer
     except ImportError as e:
