@@ -1,0 +1,9 @@
+{
+  "name": "Technical Assistant",
+  "description": "Slower, clearer voice optimized for technical explanations",
+  "engine": "pyttsx3",
+  "voice_id": "com.apple.eloquence.en-US.Reed",
+  "rate": 130,
+  "volume": 1.0,
+  "language": "en-US"
+}

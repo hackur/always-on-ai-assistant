@@ -1,0 +1,8 @@
+{
+  "name": "Kokoro",
+  "description": "High-quality TTS voice using the Kokoro-82M model from HuggingFace Inference API. Provides natural-sounding speech with excellent inflection and emotion.",
+  "engine": "kokoro",
+  "model_id": "hexgrad/Kokoro-82M",
+  "sample_rate": 24000,
+  "language": "en"
+}
