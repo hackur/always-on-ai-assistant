@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+s#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Output Layer for the Always-On AI Assistant.
@@ -216,7 +216,9 @@ class TextToSpeechOutputLayer(OutputLayer):
                  print_text: bool = True,
                  prefix: str = "Assistant: ",
                  model_id: str = "hexgrad/Kokoro-82M",
-                 sample_rate: int = 24000):
+                 sample_rate: int = 24000,
+                 use_local_model: bool = True,
+                 local_model_dir: Optional[str] = None):
         """
         Initialize the text-to-speech output layer.
 
@@ -257,6 +259,15 @@ class TextToSpeechOutputLayer(OutputLayer):
         self.sample_rate = sample_rate
         self.kokoro_model = None
         self.kokoro_processor = None
+        self.use_local_model = use_local_model
+        self.local_model_dir = local_model_dir
+
+        # Determine model directory if using local model
+        if self.local_model_dir is None and self.use_local_model:
+            # Default location relative to the script
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.local_model_dir = os.path.join(script_dir, "models", "kokoro")
+            print(f"Using default local model directory: {self.local_model_dir}")
 
         # Initialize the TTS engine
         if engine == "pyttsx3":
@@ -280,35 +291,88 @@ class TextToSpeechOutputLayer(OutputLayer):
                     "Kokoro TTS dependencies are not installed. Install them with 'uv pip install torch torchaudio transformers numpy soundfile sounddevice'."
                 )
             print(f"Initializing Kokoro TTS model from {self.model_id}...")
-            try:
-                # Let's try a direct approach using HuggingFace endpoints instead
-                import requests
-                import io
-                import tempfile
+            import requests
+            import io
+            import tempfile
 
-                self.kokoro_api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
-                self.kokoro_headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN', 'hf_dummy')}"}
-                self.kokoro_model = None  # We'll use API endpoint instead
-                self.kokoro_processor = None
+            # Setup for API fallback
+            self.kokoro_api_url = f"https://api-inference.huggingface.co/models/{self.model_id}"
+            self.kokoro_headers = {"Authorization": f"Bearer {os.environ.get('HF_TOKEN', 'hf_dummy')}"}
 
-                # Test connection
-                response = requests.get(
-                    "https://huggingface.co/hexgrad/Kokoro-82M",
-                    timeout=5
-                )
-                if response.status_code == 200:
-                    print("Kokoro TTS model found on HuggingFace")
-                else:
-                    print(f"Warning: Couldn't verify Kokoro TTS model: {response.status_code}")
+            # Attempt to load the local model if configured
+            local_model_loaded = False
+            if self.use_local_model:
+                try:
+                    if os.path.exists(self.local_model_dir) and os.path.isdir(self.local_model_dir):
+                        print(f"Found local model directory at {self.local_model_dir}")
+                        if os.path.exists(os.path.join(self.local_model_dir, "config.json")):
+                            print("Loading local Kokoro model...")
 
-                # Check for HF_TOKEN in a case-insensitive way
+                            from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
+                            # Decide on the best device
+                            if torch.backends.mps.is_available():
+                                device = "mps"  # Apple Silicon GPU
+                                print("Using MPS (Apple Silicon GPU)")
+                            elif torch.cuda.is_available():
+                                device = "cuda"  # NVIDIA GPU
+                                print("Using CUDA (NVIDIA GPU)")
+                            else:
+                                device = "cpu"   # CPU fallback
+                                print("Using CPU (no GPU available)")
+
+                            # Load the model and processor
+                            self.kokoro_processor = AutoProcessor.from_pretrained(self.local_model_dir)
+                            self.kokoro_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                                self.local_model_dir,
+                                device_map=device
+                            )
+
+                            # Set model to evaluation mode
+                            self.kokoro_model.eval()
+                            print(f"✓ Local model loaded successfully! ({device})")
+                            local_model_loaded = True
+                        else:
+                            print(f"Local model files incomplete. Missing config.json in {self.local_model_dir}")
+                    else:
+                        print(f"Local model directory not found: {self.local_model_dir}")
+                        print("You can download the model with: python download_kokoro_model.py")
+                except Exception as e:
+                    print(f"Error loading local model: {e}")
+                    self.kokoro_model = None
+                    self.kokoro_processor = None
+
+            if not local_model_loaded:
+                # Fallback to API if local model not loaded
+                print("Will use HuggingFace API as fallback...")
+
+                # Test API connection
+                try:
+                    response = requests.get(
+                        "https://huggingface.co/hexgrad/Kokoro-82M",
+                        timeout=5
+                    )
+                    if response.status_code == 200:
+                        print("Kokoro TTS model found on HuggingFace API")
+                    else:
+                        print(f"Warning: Couldn't verify Kokoro TTS model: {response.status_code}")
+                except Exception as e:
+                    print(f"Warning: Could not connect to HuggingFace: {e}")
+
+                # Check for HF_TOKEN or HuggingFace_API_KEY in environment variables
                 token_found = False
-                for key in os.environ:
-                    if key.upper() == "HF_TOKEN":
-                        token_found = True
-                        # Set it to the standard name if it's with a different case
-                        if key != "HF_TOKEN":
-                            os.environ["HF_TOKEN"] = os.environ[key]
+                hf_token_names = ["HF_TOKEN", "HUGGINGFACE_API_KEY", "HF_API_KEY"]
+
+                for token_name in hf_token_names:
+                    for key in os.environ:
+                        if key.upper() == token_name.upper():
+                            token_found = True
+                            token_value = os.environ[key]
+                            print(f"Found token in environment variable: {key}")
+                            # Set it to the standard name
+                            os.environ["HF_TOKEN"] = token_value
+                            break
+                    if token_found:
+                        break
 
                 if not token_found:
                     print("Warning: HF_TOKEN not set in environment. API access may be rate-limited.")
@@ -439,12 +503,42 @@ class TextToSpeechOutputLayer(OutputLayer):
 
                             # Request TTS generation with error handling and backoff
                             try:
-                                response = requests.post(
-                                    api_url,
-                                    headers=headers,
-                                    json={"inputs": chunk},
-                                    timeout=15  # Increase timeout for slow connections
-                                )
+                                # Two possible API formats for TTS - let's use the right one
+                                try:
+                                    # Try the newer Inference API format for TTS
+                                    response = requests.post(
+                                        api_url,
+                                        headers=headers,
+                                        json={
+                                            "inputs": chunk,
+                                            "model": self.model_id,
+                                            "parameters": {
+                                                "sampling_rate": self.sample_rate,
+                                                "return_type": "waveform"
+                                            }
+                                        },
+                                        timeout=15  # Increase timeout for slow connections
+                                    )
+
+                                    print(f"API request with parameters sent to {api_url}")
+                                    print(f"Request payload: {{ 'inputs': '{chunk[:30]}...', 'model': '{self.model_id}', 'parameters': {{ 'sampling_rate': {self.sample_rate} }} }}")
+
+                                except Exception as e:
+                                    print(f"Error with first API format: {e}, trying alternative...")
+
+                                    # Try direct API URL format
+                                    try:
+                                        direct_api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{self.model_id}"
+                                        response = requests.post(
+                                            direct_api_url,
+                                            headers=headers,
+                                            json={"inputs": chunk},
+                                            timeout=15
+                                        )
+                                        print(f"Using direct API URL: {direct_api_url}")
+                                    except Exception as e2:
+                                        print(f"Error with second API format: {e2}")
+                                        # Continue with the original response
 
                                 print(f"API Response status: {response.status_code}")
 

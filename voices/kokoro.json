@@ -1,8 +1,24 @@
 {
   "name": "Kokoro",
-  "description": "High-quality TTS voice using the Kokoro-82M model from HuggingFace Inference API. Provides natural-sounding speech with excellent inflection and emotion.",
-  "engine": "kokoro",
-  "model_id": "hexgrad/Kokoro-82M",
-  "sample_rate": 24000,
-  "language": "en"
+  "description": "High-quality voice using the Kokoro-82M model locally",
+  "config": {
+    "OUTPUT_LAYER": "text_to_speech",
+    "TTS_ENGINE": "kokoro",
+    "TTS_LANGUAGE": "en",
+    "TTS_RATE": 175,
+    "TTS_VOLUME": 1.0,
+    "TTS_PRINT_TEXT": true,
+    "TTS_MODEL_ID": "hexgrad/Kokoro-82M",
+    "TTS_SAMPLE_RATE": 24000,
+    "OUTPUT_PREFIX": "Kokoro: ",
+    "USE_LOCAL_MODEL": true
+  },
+  "metadata": {
+    "author": "AI Assistant",
+    "version": "1.0.0",
+    "created": "2025-03-03",
+    "license": "MIT",
+    "source": "https://huggingface.co/hexgrad/Kokoro-82M",
+    "description": "A high-quality TTS voice using a local copy of the Kokoro-82M model. Requires downloading the model with download_kokoro_model.py first."
+  }
 }

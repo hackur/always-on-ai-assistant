@@ -31,6 +31,12 @@ sounddevice>=0.4.5
 # For audio file operations
 soundfile>=0.12.1
 
+# For model download and management
+huggingface_hub>=0.15.0
+
+# For audio processing with PyTorch
+torchaudio>=2.0.0
+
 # For numerical operations with audio data
 numpy>=1.24.0
 
@@ -58,7 +64,7 @@ speechrecognition>=3.8.1
 # sqlite3: Built into Python, no need to install
 
 # Vector storage (uncomment if needed)
-# ===================================================================================
+# ================== =================================================================
 # faiss-cpu: For vector storage and similarity search
 # faiss-cpu>=1.7.0
 
